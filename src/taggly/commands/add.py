@@ -24,7 +24,7 @@ class AddCommand(AbstractBaseCommand):
     Output = AddOutput
     Config = AddConfig
 
-    def run(self, data: AddInput, config: AddConfig | None = None) -> AddOutput:
-        """Add two numbers"""
+    def operation(self, data: AddInput, config: AddConfig | None = None) -> AddOutput:
+        """Add two numbers."""
         cfg = config or self.config or AddConfig()
         return AddOutput(result=round(data.a + data.b, cfg.precision))

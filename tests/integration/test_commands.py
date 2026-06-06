@@ -44,7 +44,7 @@ def test_implements_base(name, cmd):
 @pytest.mark.parametrize("name,cmd", COMMANDS)
 def test_has_docstring(name, cmd):
     """Command run method has a non-empty docstring."""
-    doc = cmd.run.__doc__
+    doc = cmd.operation.__doc__
     assert doc and doc.strip(), f"{name}.run() is missing a docstring"
 
 
@@ -64,7 +64,7 @@ def test_cli_help(name, cmd):
     """CLI help contains the run docstring and Config fields as documented --options."""
     result = CLI_RUNNER.invoke(CLI_APP, [name, "--help"])
     assert result.exit_code == 0, result.output
-    assert cmd.run.__doc__.strip() in result.output
+    assert cmd.operation.__doc__.strip() in result.output
 
     if cmd.Config is not None:
         for fname in cmd.Config.model_fields:

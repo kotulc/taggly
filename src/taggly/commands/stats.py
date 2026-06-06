@@ -28,8 +28,8 @@ class StatsCommand(AbstractBaseCommand):
     Output = StatsOutput
     Config = StatsConfig
 
-    def run(self, data: StatsInput, config: StatsConfig | None = None) -> StatsOutput:
-        """Compute basic statistics"""
+    def operation(self, data: StatsInput, config: StatsConfig | None = None) -> StatsOutput:
+        """Compute basic statistics."""
         cfg = config or self.config or StatsConfig()
         vals = data.values
         return StatsOutput(

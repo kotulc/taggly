@@ -11,7 +11,7 @@ def build_api(registry) -> FastAPI:
     async def index():
         """List all registered commands and their descriptions."""
         return {
-            name: {"description": cmd.run.__doc__, "endpoint": f"/{name}"}
+            name: {"description": cmd.operation.__doc__, "endpoint": f"/{name}"}
             for name, cmd in registry.items()
         }
 
@@ -42,5 +42,5 @@ def _add_endpoint(app, name, command):
 
         endpoint.__annotations__ = {"data": command.Input, "return": command.Output}
 
-    endpoint.__doc__ = command.run.__doc__
+    endpoint.__doc__ = command.operation.__doc__
     app.post(f"/{name}", response_model=command.Output)(endpoint)

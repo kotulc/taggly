@@ -17,7 +17,8 @@ def build_cli(registry) -> typer.Typer:
 
 
 def _make_command_func(cmd):
-    """Return a function whose signature Typer can introspect.
+    """
+    Return a function whose signature Typer can introspect.
 
     Input fields  → positional arguments (typer.Argument).
     Config fields → --flag options (typer.Option) defaulting to env-resolved values.
@@ -56,5 +57,5 @@ def _make_command_func(cmd):
         print(result)
 
     wrapper.__signature__ = inspect.Signature(params)
-    wrapper.__doc__ = cmd.run.__doc__
+    wrapper.__doc__ = cmd.operation.__doc__
     return wrapper

@@ -10,6 +10,7 @@ def main():
 
     # Start the app as either a CLI or API based on the config setting
     if config.mode == "cli":
+        import sys
         cli = build_cli(registry)
         cli()
     else:

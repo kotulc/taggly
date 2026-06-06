@@ -13,10 +13,11 @@ dependencies = [
   "pydantic-settings",
   "keybert",
   "yake",
+  "httpx",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+dev = ["pytest"]
 
 [project.scripts]
 taggly = "taggly.main:main"
