@@ -17,8 +17,7 @@ def build_cli(registry) -> typer.Typer:
 
 
 def _make_command_func(cmd):
-    """
-    Return a function whose signature Typer can introspect.
+    """Return a function whose signature Typer can introspect.
 
     Input fields  → positional arguments (typer.Argument).
     Config fields → --flag options (typer.Option) defaulting to env-resolved values.
@@ -38,7 +37,6 @@ def _make_command_func(cmd):
 
     if cmd.Config is not None:
         for fname, field in cmd.Config.model_fields.items():
-            # Use the instance's env-resolved value, not just the model default.
             params.append(inspect.Parameter(
                 fname,
                 kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
@@ -49,7 +47,9 @@ def _make_command_func(cmd):
     def wrapper(**kwargs):
         input_data = cmd.Input(**{k: v for k, v in kwargs.items() if k in input_fields})
         if cmd.Config is not None:
-            config_data = cmd.Config(**{k: v for k, v in kwargs.items() if k in config_fields})
+            config_data = cmd.config.model_copy(
+                update={k: v for k, v in kwargs.items() if k in config_fields}
+            )
             result = cmd.run(input_data, config_data)
         else:
             result = cmd.run(input_data)

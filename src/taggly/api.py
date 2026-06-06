@@ -22,11 +22,10 @@ def build_api(registry) -> FastAPI:
 
 
 def _add_endpoint(app, name, command):
-    """
-    Register a single POST endpoint for a command, pulling docs from run.__doc__.
+    """Register a single POST endpoint for a command, pulling docs from run.__doc__.
 
-    If the command defines a Config class, its fields are exposed as query parameters
-    so callers can override env-resolved defaults on a per-request basis.
+    Config fields are exposed as query parameters so callers can override defaults
+    per request. Use the COMMANDS env var to set deployment-level defaults.
     """
     if command.Config is not None:
         async def endpoint(data, config=Depends(command.Config)):

@@ -11,6 +11,8 @@ dependencies = [
   "uvicorn",
   "pydantic",
   "pydantic-settings",
+  "keybert",
+  "yake",
 ]
 
 [project.optional-dependencies]

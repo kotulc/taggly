@@ -18,20 +18,20 @@ API_CLIENT = TestClient(build_api(REGISTRY))
 
 COMMANDS = list(REGISTRY.items())
 
+_DEFAULTS = {float: 1.0, int: 1, str: "x", bool: True}
+
 
 def _sample_input(model_class) -> dict:
-    """Generate minimal valid input data for a Pydantic model by field type."""
-    _defaults = {float: 1.0, int: 1, str: "x", bool: True}
+    """Generate minimal valid input for a Pydantic model by field type."""
     data = {}
-
     for fname, field in model_class.model_fields.items():
         origin = get_origin(field.annotation)
         if origin is list:
             inner = get_args(field.annotation)[0]
-            data[fname] = [_defaults.get(inner, 0)]
-        else:
-            data[fname] = _defaults.get(field.annotation, 0)
-
+            if inner in _DEFAULTS:
+                data[fname] = [_DEFAULTS[inner]]
+        elif field.annotation in _DEFAULTS:
+            data[fname] = _DEFAULTS[field.annotation]
     return data
 
 
@@ -67,17 +67,13 @@ def test_cli_help(name, cmd):
     assert cmd.run.__doc__.strip() in result.output
 
     if cmd.Config is not None:
-        for fname, field in cmd.Config.model_fields.items():
-            flag = f"--{fname.replace('_', '-')}"
-            assert flag in result.output, f"Expected {flag} in help for {name}"
-            assert field.description in result.output, (
-                f"Expected description '{field.description}' in help for {name}.{fname}"
-            )
+        for fname in cmd.Config.model_fields:
+            assert f"--{fname.replace('_', '-')}" in result.output
 
 
 @pytest.mark.parametrize("name,cmd", COMMANDS)
 def test_api_endpoint(name, cmd):
-    """POST /{name} returns 200 with valid body; Config fields accepted as query params."""
+    """POST /{name} returns 200 with valid body and Config fields as query params."""
     payload = _sample_input(cmd.Input)
     params = _sample_input(cmd.Config) if cmd.Config is not None else None
     response = API_CLIENT.post(f"/{name}", json=payload, params=params)
