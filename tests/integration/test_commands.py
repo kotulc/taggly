@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
 from taggly.api import build_api
-from taggly.base import AbstractBaseCommand
+from taggly.models.base import AbstractBaseCommand
 from taggly.cli import build_cli
 from taggly.registry import discover_commands
 

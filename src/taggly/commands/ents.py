@@ -3,7 +3,7 @@
 from typing import List
 from pydantic import BaseModel, Field
 
-from taggly.base import AbstractBaseCommand
+from taggly.models.base import AbstractBaseCommand
 
 
 class EntsConfig(BaseModel):

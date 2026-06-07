@@ -1,6 +1,14 @@
 # taggly
 
-A CLI-first, config-driven NLP based tag extraction utility.
+Taggly is a hyper extensible CLI-first config-driven NLP based tag extraction utility and application framework.
+
+The intelligent application framework facilitates quickly adding and removing commands without any additional wiring or registration beyond simply implementing the `AbstractBaseCommand` class.
+
+### Features
+- Auto command registration and docs generation
+- Commands are automatically included as endpoints in the API
+- Commands check for their active endpoints or fallback to local operations
+- The application can be run in both CLI or API mode with 0 additional logic
 
 
 ## Installation

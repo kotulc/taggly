@@ -2,15 +2,19 @@
 
 import importlib
 import inspect
+import sys
 from pathlib import Path
 from typing import Dict
 
 import httpx
 
-from taggly.base import AbstractBaseCommand
+from taggly.models.base import AbstractBaseCommand
 
 # Root of the src/ layout — used to build dotted module paths.
 _SRC_ROOT = Path(__file__).parent.parent
+
+# Names reserved for built-in CLI commands; user commands with these names are skipped.
+_RESERVED = {"docs", "start", "stop"}
 
 
 def discover_commands(commands_dir: Path=None, app_config=None) -> Dict[str, AbstractBaseCommand]:
@@ -41,6 +45,9 @@ def discover_commands(commands_dir: Path=None, app_config=None) -> Dict[str, Abs
                 continue
 
             cmd_name = getattr(obj, "name", None)
+            if cmd_name in _RESERVED:
+                print(f"warning: '{cmd_name}' is a reserved command name, skipping.", file=sys.stderr)
+                continue
             raw = app_config.commands.get(cmd_name, {}) if (app_config and cmd_name) else {}
             cmd_config = obj.Config(**raw) if obj.Config is not None else None
             api_url = f"{api_base}/{cmd_name}" if (api_base and cmd_name) else None

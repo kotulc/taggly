@@ -5,6 +5,9 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+# Sample value for docs generation
+_SAMPLE = "Language models are transforming how we interact with text and data."
+
 
 def generate_docs(registry, cli_app, output_dir: Path = None) -> None:
     """Write one .md file per registered command to output_dir."""
@@ -18,13 +21,10 @@ def generate_docs(registry, cli_app, output_dir: Path = None) -> None:
         print(f"  docs/{name}.md")
 
 
-_SAMPLE = "Language models are transforming how we interact with text and data."
-
-
 def _doc(name: str, cmd, runner: CliRunner, cli_app) -> str:
     """Build the full markdown document for one command."""
     parts = [
-        f"# {name}\n",
+        f"# '{name}' Command\n",
         f"{cmd.operation.__doc__.strip()}\n",
         _examples_section(name, cmd),
         _cli_section(name, runner, cli_app),

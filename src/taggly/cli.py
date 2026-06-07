@@ -1,18 +1,23 @@
 """Builds a Typer CLI app from a command registry."""
 
 import inspect
+import os
+import subprocess
+import sys
+from pathlib import Path
 from typing import Annotated
 
 import typer
 
 
-def build_cli(registry) -> typer.Typer:
-    """Create a Typer app with one sub-command per registry entry."""
+def build_cli(registry, config=None) -> typer.Typer:
+    """Create a Typer app with one sub-command per registry entry plus reserved commands."""
     app = typer.Typer(name="taggly")
 
     for name, command in registry.items():
         app.command(name=name)(_make_command_func(command))
 
+    _add_reserved(app, registry, config)
     return app
 
 
@@ -59,3 +64,60 @@ def _make_command_func(cmd):
     wrapper.__signature__ = inspect.Signature(params)
     wrapper.__doc__ = cmd.operation.__doc__
     return wrapper
+
+
+def _add_reserved(app: typer.Typer, registry, config) -> None:
+    """Register the built-in docs, start, and stop commands."""
+    _PID_FILE = Path(".taggly.pid")
+
+    @app.command("docs")
+    def _docs():
+        """Generate markdown reference docs to docs/ for each registered command."""
+        from taggly.docs import generate_docs
+        print("Generating docs...")
+        generate_docs(registry, app)
+
+    @app.command("start")
+    def _start():
+        """Start the taggly API server in the background."""
+        if _PID_FILE.exists():
+            typer.echo("Server already running. Run 'taggly stop' first.")
+            raise typer.Exit(1)
+
+        env = {**os.environ, "MODE": "api"}
+        kwargs = (
+            {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
+            if sys.platform == "win32"
+            else {"start_new_session": True}
+        )
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "taggly.main"],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            **kwargs,
+        )
+        _PID_FILE.write_text(str(proc.pid))
+        host = config.host if config else "127.0.0.1"
+        port = config.port if config else 8000
+        typer.echo(f"API server started (pid {proc.pid}) → http://{host}:{port}")
+
+    @app.command("stop")
+    def _stop():
+        """Stop the running taggly API server."""
+        if not _PID_FILE.exists():
+            typer.echo("No running server found (.taggly.pid missing).")
+            raise typer.Exit(1)
+        pid = int(_PID_FILE.read_text().strip())
+        try:
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/F", "/PID", str(pid)], check=True,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                import signal
+                os.kill(pid, signal.SIGTERM)
+            typer.echo(f"API server (pid {pid}) stopped.")
+        except (ProcessLookupError, subprocess.CalledProcessError):
+            typer.echo(f"Process {pid} not found — cleaned up stale .taggly.pid.")
+        finally:
+            _PID_FILE.unlink(missing_ok=True)

@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-from taggly.base import AbstractBaseCommand
+from taggly.models.base import AbstractBaseCommand
 
 # Map VADER's 'neg', 'neu', 'pos' keys to more intuitive output keys
 VADER_MAP = {'neg': 'negative', 'neu': 'neutral', 'pos': 'positive'}
@@ -33,13 +33,13 @@ class PolarCommand(AbstractBaseCommand):
         self._vader = None  # cached VADER analyzer — only loaded on first local use
 
     def warmup(self) -> None:
-        """Pre-load the default polariment model."""
+        """Pre-load the default polarity model."""
         if self.config.model.lower() != "blob" and self._vader is None:
             from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
             self._vader = SentimentIntensityAnalyzer()
 
     def operation(self, data: PolarInput, config: PolarConfig=None) -> PolarOutput:
-        """Compute positive/neutral/negative polariment for the supplied text."""
+        """Compute positive/neutral/negative polarity for the supplied text."""
         cfg = config or self.config or PolarConfig()
         scores = self._analyze(data.content, cfg)
         return PolarOutput(tags=[max(scores, key=scores.get)], scores=scores)

@@ -1,19 +1,19 @@
-# 'spam' Command
+# 'polar' Command
 
-Compute spam score for the supplied text.
+Compute positive/neutral/negative polarity for the supplied text.
 
 ## Examples
 
 **CLI**
 
 ```
-taggly spam "Language models are transforming how we interact with text and data." --threshold 0.5
+taggly polar "Language models are transforming how we interact with text and data." --model vader
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/spam?threshold=0.5" \
+curl -X POST "http://localhost:8000/polar?model=vader" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -21,22 +21,22 @@ curl -X POST "http://localhost:8000/spam?threshold=0.5" \
 ## CLI
 
 ```
-Usage: taggly spam [OPTIONS] CONTENT                                                                                                                                                   
+Usage: taggly polar [OPTIONS] CONTENT                                                                                                                                                  
                                                                                                                                                                                         
- Compute spam score for the supplied text.                                                                                                                                              
+ Compute positive/neutral/negative polarity for the supplied text.                                                                                                                      
                                                                                                                                                                                         
 ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ *    content      TEXT  [required]                                                                                                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --threshold        FLOAT  The spam score threshold to assign a 'spam' label [default: 0.5]                                                                                           │
-│ --help                    Show this message and exit.                                                                                                                                │
+│ --model        TEXT  Sentiment analysis model to use: 'vader' or 'blob' [default: vader]                                                                                             │
+│ --help               Show this message and exit.                                                                                                                                     │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## API
 
-`POST /spam`
+`POST /polar`
 
 **Request**
 
@@ -46,7 +46,7 @@ Usage: taggly spam [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `threshold`
+**Query parameters** (override config defaults): `model`
 
 **Response**
 
@@ -55,7 +55,7 @@ Usage: taggly spam [OPTIONS] CONTENT
   "tags": [
     "..."
   ],
-  "score": 0.0
+  "scores": {}
 }
 ```
 
@@ -70,10 +70,10 @@ Usage: taggly spam [OPTIONS] CONTENT
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `tags` | array[string] | yes | — | — |
-| `score` | number | yes | — | — |
+| `scores` | dict[str, number] | yes | — | — |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `threshold` | number | no | 0.5 | The spam score threshold to assign a 'spam' label |
+| `model` | string | no | vader | Sentiment analysis model to use: 'vader' or 'blob' |

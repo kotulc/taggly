@@ -10,27 +10,17 @@ def main():
     config = AppConfig()
     registry = discover_commands(app_config=config)
 
-    # Start the app as either a CLI or API based on the config setting
-    if config.mode == "docs":
-        from taggly.docs import generate_docs
-        cli = build_cli(registry)
-        print("Generating docs...")
-        generate_docs(registry, cli)
-    elif config.mode == "cli":
-        cli = build_cli(registry)
-        cli()
-    else:
+    if config.mode == "api":
         import uvicorn
         api = build_api(registry)
-
-        # Pre-warmup any models specified in the config to speed up first requests
         for name in config.warmup:
             if name in registry:
                 print(f"[{name}] warming up...", file=sys.stderr)
                 registry[name].warmup()
-                
         print("", file=sys.stderr)
         uvicorn.run(api, host=config.host, port=config.port)
+    else:
+        build_cli(registry, config)()
 
 
 if __name__ == "__main__":
