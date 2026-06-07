@@ -8,3 +8,4 @@ class AppConfig(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     commands: dict[str, dict] = {}  # per-command config keyed by command name
+    warmup: list[str] = ["keys", "ents"]  # command names to pre-load on API startup

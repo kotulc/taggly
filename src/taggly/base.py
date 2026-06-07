@@ -1,7 +1,6 @@
 """Abstract base class for all commands."""
 
 import httpx
-import sys
 
 from abc import ABC, abstractmethod
 from typing import Type
@@ -22,17 +21,19 @@ class AbstractBaseCommand(ABC):
 
     def run(self, data: BaseModel, config: BaseModel=None) -> BaseModel:
         """Delegate to the API if available, otherwise call operation() locally."""
-        effective_config = config or self.config
+        config = config or self.config
         if self.api_url:
             try:
-                result = self._call_api(self.api_url, data, effective_config)
-                print(f"[{self.name}] api", file=sys.stderr)
+                result = self._call_api(self.api_url, data, config)
                 return result
             except Exception:
                 pass
 
-        print(f"[{self.name}] local", file=sys.stderr)
-        return self.operation(data, effective_config)
+        return self.operation(data, config)
+
+    def warmup(self) -> None:
+        """Pre-load any expensive dependencies. Override in commands with heavy init."""
+        pass
 
     @abstractmethod
     def operation(self, data: BaseModel, config: BaseModel=None) -> BaseModel:

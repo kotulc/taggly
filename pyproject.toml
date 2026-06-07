@@ -11,7 +11,10 @@ dependencies = [
   "uvicorn",
   "pydantic",
   "pydantic-settings",
+  "torch",
   "keybert",
+  "spacy",
+  "vaderSentiment",
   "yake",
   "httpx",
 ]
