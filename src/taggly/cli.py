@@ -8,7 +8,7 @@ import typer
 
 def build_cli(registry) -> typer.Typer:
     """Create a Typer app with one sub-command per registry entry."""
-    app = typer.Typer()
+    app = typer.Typer(name="taggly")
 
     for name, command in registry.items():
         app.command(name=name)(_make_command_func(command))

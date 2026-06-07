@@ -11,7 +11,12 @@ def main():
     registry = discover_commands(app_config=config)
 
     # Start the app as either a CLI or API based on the config setting
-    if config.mode == "cli":
+    if config.mode == "docs":
+        from taggly.docs import generate_docs
+        cli = build_cli(registry)
+        print("Generating docs...")
+        generate_docs(registry, cli)
+    elif config.mode == "cli":
         cli = build_cli(registry)
         cli()
     else:

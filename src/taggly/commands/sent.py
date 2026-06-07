@@ -36,12 +36,16 @@ class SentCommand(AbstractBaseCommand):
                 from textblob import TextBlob
                 def analyze(text):
                     p = TextBlob(text).sentiment.polarity
+                    print(f"TextBlob: {p}")
                     return {"neg": max(0.0, -p), "neu": round(1.0 - abs(p), 4), "pos": max(0.0, p)}
                 self._analyzer = analyze
             else:
                 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
                 sia = SentimentIntensityAnalyzer()
-                self._analyzer = lambda text: {k: sia.polarity_scores(text)[k] for k in ('neg', 'neu', 'pos')}
+                def analyze(text):
+                    print("Vader:", sia.polarity_scores(text))
+                    return {k: sia.polarity_scores(text)[k] for k in ('neg', 'neu', 'pos')}
+                self._analyzer = analyze
 
     def operation(self, data: SentInput, config: SentConfig=None) -> SentOutput:
         """Compute positive/neutral/negative sentiment for the supplied text."""
