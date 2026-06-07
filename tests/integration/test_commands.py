@@ -1,5 +1,6 @@
 """Integration tests: verify all registered commands are valid, documented, CLI-callable, and API-reachable."""
 
+import re
 from typing import get_args, get_origin
 
 import pytest
@@ -19,6 +20,18 @@ API_CLIENT = TestClient(build_api(REGISTRY))
 COMMANDS = list(REGISTRY.items())
 
 _DEFAULTS = {float: 1.0, int: 1, str: "x", bool: True}
+_SAMPLE = "This product is absolutely fantastic and works perfectly in every situation."
+
+
+def _model_choices(cmd) -> list:
+    """Extract quoted model names from the 'model' Config field description."""
+    if cmd.Config is None or "model" not in cmd.Config.model_fields:
+        return []
+    desc = cmd.Config.model_fields["model"].description or ""
+    return re.findall(r"'([^']+)'", desc)
+
+
+MODEL_COMMANDS = [(n, c) for n, c in COMMANDS if len(_model_choices(c)) >= 2]
 
 
 def _sample_input(model_class) -> dict:
@@ -69,6 +82,23 @@ def test_cli_help(name, cmd):
     if cmd.Config is not None:
         for fname in cmd.Config.model_fields:
             assert f"--{fname.replace('_', '-')}" in result.output
+
+
+@pytest.mark.parametrize("name,cmd", MODEL_COMMANDS)
+def test_model_config_respected(name, cmd):
+    """Commands with a model config option return different output for different models."""
+    choices = _model_choices(cmd)
+    payload = {
+        k: (_SAMPLE if f.annotation is str else _DEFAULTS.get(f.annotation, 1))
+        for k, f in cmd.Input.model_fields.items()
+    }
+    results = [
+        API_CLIENT.post(f"/{name}", json=payload, params={"model": m}).json()
+        for m in choices[:2]
+    ]
+    assert results[0] != results[1], (
+        f"{name}: model config ignored — '{choices[0]}' and '{choices[1]}' both returned {results[0]}"
+    )
 
 
 @pytest.mark.parametrize("name,cmd", COMMANDS)

@@ -1,8 +1,12 @@
 """tox command: Toxicity scoring for the supplied text."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from taggly.base import AbstractBaseCommand
+
+
+class ToxConfig(BaseModel):
+    threshold: float = Field(0.5, description="The toxicity score threshold to assign a 'toxic' label")
 
 
 class ToxInput(BaseModel):
@@ -10,6 +14,7 @@ class ToxInput(BaseModel):
 
 
 class ToxOutput(BaseModel):
+    tags: list[str]
     score: float
 
 
@@ -17,9 +22,11 @@ class ToxCommand(AbstractBaseCommand):
     name = "tox"
     Input = ToxInput
     Output = ToxOutput
+    Config = ToxConfig
 
     def __init__(self, api_url: str=None, config: BaseModel=None):
-        super().__init__(api_url, config)
+        cfg = config if config is not None else ToxConfig()
+        super().__init__(api_url, cfg)
         self._pipe = None  # toxic-bert pipeline — only loaded on first local use
 
     def warmup(self) -> None:
@@ -32,4 +39,9 @@ class ToxCommand(AbstractBaseCommand):
         """Compute toxicity score for the supplied text."""
         if self._pipe is None:
             self.warmup()
-        return ToxOutput(score=self._pipe(data.content)[0]['score'])
+        
+        score = self._pipe(data.content)[0]['score']
+        cfg = config if config is not None else ToxConfig()
+        tags = ["toxic"] if score >= cfg.threshold else []
+
+        return ToxOutput(tags=tags, score=score)

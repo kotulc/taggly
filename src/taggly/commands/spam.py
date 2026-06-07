@@ -1,8 +1,12 @@
 """spam command: Spam detection scoring for the supplied text."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from taggly.base import AbstractBaseCommand
+
+
+class SpamConfig(BaseModel):
+    threshold: float = Field(0.5, description="The spam score threshold to assign a 'spam' label")
 
 
 class SpamInput(BaseModel):
@@ -10,6 +14,7 @@ class SpamInput(BaseModel):
 
 
 class SpamOutput(BaseModel):
+    tags: list[str]
     score: float
 
 
@@ -17,9 +22,11 @@ class SpamCommand(AbstractBaseCommand):
     name = "spam"
     Input = SpamInput
     Output = SpamOutput
+    Config = SpamConfig
 
     def __init__(self, api_url: str=None, config: BaseModel=None):
-        super().__init__(api_url, config)
+        cfg = config if config is not None else SpamConfig()
+        super().__init__(api_url, cfg)
         self._tokenizer = None  # BERT tokenizer — only loaded on first local use
         self._classifier = None  # BERT classifier — only loaded on first local use
 
@@ -34,12 +41,17 @@ class SpamCommand(AbstractBaseCommand):
     def operation(self, data: SpamInput, config: BaseModel=None) -> SpamOutput:
         """Compute spam score for the supplied text."""
         import torch
-        
+
         if self._tokenizer is None:
             self.warmup()
-        inputs = self._tokenizer(data.content, return_tensors="pt")
 
+        inputs = self._tokenizer(data.content, return_tensors="pt")
         with torch.no_grad():
             logits = self._classifier(**inputs).logits
 
-        return SpamOutput(score=torch.softmax(logits, dim=1).flatten()[1].item())
+        # Compute spam score and assign "spam" tag if threshold is achieved
+        cfg = config or self.config or SpamConfig()
+        score = torch.softmax(logits, dim=1).flatten()[1].item()
+        tags = ["spam"] if score >= cfg.threshold else []
+
+        return SpamOutput(tags=tags, score=score)

@@ -9,7 +9,7 @@ from taggly.base import AbstractBaseCommand
 
 class KeysConfig(BaseModel):
     model: str = Field("keybert", description="Extraction model to use: 'yake' or 'keybert'")
-    top_n: int = Field(3, description="Number of keywords to extract")
+    top_n: int = Field(10, description="Number of keywords to extract")
     ngram_max: int = Field(1, description="Maximum n-gram size for keyword phrases")
     language: str = Field("en", description="Language code for YAKE stop-word filtering")
     dedup_lim: float = Field(0.9, description="YAKE deduplication similarity threshold (0–1)")
