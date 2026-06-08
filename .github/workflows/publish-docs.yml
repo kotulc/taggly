@@ -10,7 +10,8 @@ jobs:
   publish:
     uses: kotulc/mdsite/.github/workflows/deploy.yml@main
     permissions:
-      contents: write
+      pages: write
+      id-token: write
     with:
       content_repo: kotulc/taggly
       content_path: docs
