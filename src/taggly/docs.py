@@ -1,6 +1,7 @@
 """Generate markdown command reference docs to the /docs folder."""
 
 import json
+import shutil
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -15,10 +16,19 @@ def generate_docs(registry, cli_app, output_dir: Path = None) -> None:
     out.mkdir(exist_ok=True)
     runner = CliRunner()
 
+    # Copy README.md (from cwd, where taggly docs is invoked) as the landing page
+    readme = Path("README.md")
+    if readme.exists():
+        shutil.copy2(readme, out / "home.md")
+        print("  docs/home.md")
+
+    # Write all command docs
+    cmds_dir = out / "commands"
+    cmds_dir.mkdir(exist_ok=True)
     for name, cmd in registry.items():
-        path = out / f"{name}.md"
+        path = cmds_dir / f"{name}.md"
         path.write_text(_doc(name, cmd, runner, cli_app), encoding="utf-8")
-        print(f"  docs/{name}.md")
+        print(f"  docs/commands/{name}.md")
 
 
 def _doc(name: str, cmd, runner: CliRunner, cli_app) -> str:
