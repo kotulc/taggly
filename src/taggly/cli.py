@@ -2,12 +2,34 @@
 
 import inspect
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
 from typing import Annotated
 
 import typer
+
+_PID_FILE = Path(".taggly.pid")
+
+
+def _kill(pid: int) -> None:
+    """Terminate a process by PID — taskkill on Windows (works for detached), SIGTERM elsewhere."""
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/F", "/PID", str(pid)], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        os.kill(pid, signal.SIGTERM)
+
+
+def _spawn(cmd: list, env: dict) -> subprocess.Popen:
+    """Spawn a detached background process — platform-specific flags are isolated here."""
+    kwargs = (
+        {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
+        if sys.platform == "win32"
+        else {"start_new_session": True}
+    )
+    return subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs)
 
 
 def build_cli(registry, config=None) -> typer.Typer:
@@ -68,7 +90,6 @@ def _make_command_func(cmd):
 
 def _add_reserved(app: typer.Typer, registry, config) -> None:
     """Register the built-in docs, start, and stop commands."""
-    _PID_FILE = Path(".taggly.pid")
 
     @app.command("docs")
     def _docs():
@@ -83,20 +104,7 @@ def _add_reserved(app: typer.Typer, registry, config) -> None:
         if _PID_FILE.exists():
             typer.echo("Server already running. Run 'taggly stop' first.")
             raise typer.Exit(1)
-
-        env = {**os.environ, "MODE": "api"}
-        kwargs = (
-            {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
-            if sys.platform == "win32"
-            else {"start_new_session": True}
-        )
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "taggly.main"],
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            **kwargs,
-        )
+        proc = _spawn([sys.executable, "-m", "taggly.main"], {**os.environ, "MODE": "api"})
         _PID_FILE.write_text(str(proc.pid))
         host = config.host if config else "127.0.0.1"
         port = config.port if config else 8000
@@ -110,14 +118,9 @@ def _add_reserved(app: typer.Typer, registry, config) -> None:
             raise typer.Exit(1)
         pid = int(_PID_FILE.read_text().strip())
         try:
-            if sys.platform == "win32":
-                subprocess.run(["taskkill", "/F", "/PID", str(pid)], check=True,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:
-                import signal
-                os.kill(pid, signal.SIGTERM)
+            _kill(pid)
             typer.echo(f"API server (pid {pid}) stopped.")
-        except (ProcessLookupError, subprocess.CalledProcessError):
+        except (OSError, subprocess.CalledProcessError):
             typer.echo(f"Process {pid} not found — cleaned up stale .taggly.pid.")
         finally:
             _PID_FILE.unlink(missing_ok=True)
