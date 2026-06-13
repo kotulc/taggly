@@ -12,10 +12,14 @@ dependencies = [
   "pydantic",
   "pydantic-settings",
   "torch",
+  "transformers",
+  "sentence-transformers",
+  "bertopic",
   "keybert",
   "spacy",
   "vaderSentiment",
   "yake",
+  "numpy",
   "httpx",
 ]
 

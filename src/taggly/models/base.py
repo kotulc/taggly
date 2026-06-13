@@ -1,5 +1,7 @@
 """Abstract base class for all commands."""
 
+import sys
+
 import httpx
 
 from abc import ABC, abstractmethod
@@ -25,10 +27,12 @@ class AbstractBaseCommand(ABC):
         if self.api_url:
             try:
                 result = self._call_api(self.api_url, data, config)
+                print(f"[{self.name}] api", file=sys.stderr)
                 return result
             except Exception:
                 pass
 
+        print(f"[{self.name}] local", file=sys.stderr)
         return self.operation(data, config)
 
     def warmup(self) -> None:

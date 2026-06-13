@@ -1,6 +1,5 @@
 """keys command: Extract keywords from the supplied text."""
 
-import sys
 from typing import List
 from pydantic import BaseModel, Field
 

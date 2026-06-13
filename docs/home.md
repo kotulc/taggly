@@ -21,13 +21,23 @@ pip install -e .
 
 | Command | Description | Config options |
 |---------|-------------|----------------|
-| `keys` | Keyword extraction | `model`, `top_n`, `ngram_max`, `language`, `dedup_lim`, `dedup_func`, `stop_words`, `use_mmr` |
-| `ents` | Named entity extraction | `top_n`, `language` |
-| `sent` | Sentiment analysis | `model` |
-| `spam` | Spam detection scoring | — |
-| `tox`  | Toxicity scoring | — |
+| `keys`   | Keyword extraction | `model`, `top_n`, `ngram_max`, `language`, `dedup_lim`, `dedup_func`, `stop_words`, `use_mmr` |
+| `ents`   | Named entity extraction | `top_n`, `language` |
+| `polar`  | Polarity sentiment analysis | `model` |
+| `spam`   | Spam detection scoring | `threshold` |
+| `tox`    | Toxicity scoring | `threshold` |
+| `desc`   | Text description via a language model | `model`, `max_tokens` |
+| `ext`    | Typed concept extraction via a language model | `model`, `concepts`, `max_tokens` |
+| `score`  | Semantic similarity scores (cosine/dot) | `model`, `metric` |
+| `rank`   | Maximal Marginal Relevance ranking | `model`, `top_n`, `diversity` |
+| `topics` | Topic discovery via BERTopic | `model`, `top_n` |
 
-Per-command reference docs are in [`docs/`](docs/).
+Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
+`bge-base`, `bge-large`. Generative commands (`desc`, `ext`) share Gemma models —
+`gemma-1b`, `gemma-4b`, `gemma-12b`.
+
+Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
+described in [`docs/framework.md`](docs/framework.md).
 
 ## Running as CLI
 
@@ -41,16 +51,23 @@ taggly keys "natural language processing is a subfield of AI"
 taggly keys "natural language processing" --model yake --top-n 5
 # {"keywords": [...]}
 
-taggly sent "I love this product!"
-# {"tag": "pos", "scores": {"neg": 0.0, "neu": 0.1, "pos": 0.9}}
+taggly polar "I love this product!"
+# {"tags": ["positive"], "scores": {"negative": 0.0, "neutral": 0.1, "positive": 0.9}}
 
 taggly tox "You are amazing!"
-# {"score": 0.02}
+# {"tags": [], "score": 0.02}
 ```
 
 ## Running as API
 
-Set `MODE=api` and run `taggly`:
+Start the server in the background with the built-in `start` command (and stop it with `stop`):
+
+```bash
+taggly start   # launches the API server in the background, writes .taggly.pid
+taggly stop    # stops the running server
+```
+
+To run it in the foreground instead, set `MODE=api`:
 
 **Linux / macOS**
 ```bash
@@ -109,11 +126,12 @@ taggly
 
 ## Generating docs
 
-`MODE=docs` writes a markdown reference file to `docs/` for every registered command:
+The built-in `docs` command writes a markdown reference file to `docs/commands/` for every
+registered command, plus a `home.md` copied from this README:
 
 ```bash
-MODE=docs taggly
-# docs/keys.md, docs/ents.md, docs/sent.md, docs/spam.md, docs/tox.md
+taggly docs
+# docs/home.md, docs/commands/keys.md, docs/commands/ents.md, ...
 ```
 
 ## Configuration
@@ -122,7 +140,7 @@ All settings are read from environment variables or a `.env` file in the project
 
 | Variable   | Default     | Description                                        |
 |------------|-------------|----------------------------------------------------|
-| `MODE`     | `cli`       | `cli`, `api`, or `docs`                            |
+| `MODE`     | `cli`       | `cli` or `api`                                     |
 | `HOST`     | `127.0.0.1` | API server bind address                            |
 | `PORT`     | `8000`      | API server port                                    |
 | `COMMANDS` | `{}`        | Per-command config as JSON (see below)             |
@@ -159,13 +177,16 @@ curl -X POST "http://127.0.0.1:8000/keys?top_n=1" \
 
 Taggly implements a modular command framework. Drop a module into `src/taggly/commands/` and it is automatically registered as both a CLI sub-command and an API endpoint — with no wiring required.
 
+The names `docs`, `start`, and `stop` are reserved for the built-in CLI commands; a discovered
+command using one of those names is skipped with a warning.
+
 ### Adding commands
 
 Create a `.py` file in `src/taggly/commands/` — it is auto-discovered on next run.
 
 ```python
 from pydantic import BaseModel, Field
-from taggly.base import AbstractBaseCommand
+from taggly.models.base import AbstractBaseCommand
 
 
 class GreetInput(BaseModel):

@@ -1,19 +1,19 @@
-# 'tox' Command
+# 'desc' Command
 
-Compute toxicity score for the supplied text.
+Generate a concise description of the supplied text.
 
 ## Examples
 
 **CLI**
 
 ```
-taggly tox "Language models are transforming how we interact with text and data." --threshold 0.5
+taggly desc "Language models are transforming how we interact with text and data." --model gemma-1b
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/tox?threshold=0.5" \
+curl -X POST "http://localhost:8000/desc?model=gemma-1b" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -21,24 +21,26 @@ curl -X POST "http://localhost:8000/tox?threshold=0.5" \
 ## CLI
 
 ```
-Usage: taggly tox [OPTIONS] CONTENT                                           
+Usage: taggly desc [OPTIONS] CONTENT                                          
                                                                                
- Compute toxicity score for the supplied text.                                 
+ Generate a concise description of the supplied text.                          
                                                                                
 ┌─ Arguments ─────────────────────────────────────────────────────────────────┐
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --threshold        FLOAT  The toxicity score threshold to assign a 'toxic'  │
-│                           label                                             │
-│                           [default: 0.5]                                    │
-│ --help                    Show this message and exit.                       │
+│ --model             TEXT     Generative model: 'gemma-1b', 'gemma-4b', or   │
+│                              'gemma-12b'                                    │
+│                              [default: gemma-1b]                            │
+│ --max-tokens        INTEGER  Maximum number of tokens to generate           │
+│                              [default: 128]                                 │
+│ --help                       Show this message and exit.                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## API
 
-`POST /tox`
+`POST /desc`
 
 **Request**
 
@@ -48,16 +50,13 @@ Usage: taggly tox [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `threshold`
+**Query parameters** (override config defaults): `model`, `max_tokens`
 
 **Response**
 
 ```json
 {
-  "tags": [
-    "..."
-  ],
-  "score": 0.0
+  "description": "..."
 }
 ```
 
@@ -71,11 +70,11 @@ Usage: taggly tox [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tags` | array[string] | yes | — | — |
-| `score` | number | yes | — | — |
+| `description` | string | yes | — | — |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `threshold` | number | no | 0.5 | The toxicity score threshold to assign a 'toxic' label |
+| `model` | string | no | gemma-1b | Generative model: 'gemma-1b', 'gemma-4b', or 'gemma-12b' |
+| `max_tokens` | integer | no | 128 | Maximum number of tokens to generate |

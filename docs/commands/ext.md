@@ -1,19 +1,19 @@
-# 'tox' Command
+# 'ext' Command
 
-Compute toxicity score for the supplied text.
+Extract typed concepts from the supplied text as a JSON object.
 
 ## Examples
 
 **CLI**
 
 ```
-taggly tox "Language models are transforming how we interact with text and data." --threshold 0.5
+taggly ext "Language models are transforming how we interact with text and data." --model gemma-1b
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/tox?threshold=0.5" \
+curl -X POST "http://localhost:8000/ext?model=gemma-1b" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -21,24 +21,28 @@ curl -X POST "http://localhost:8000/tox?threshold=0.5" \
 ## CLI
 
 ```
-Usage: taggly tox [OPTIONS] CONTENT                                           
+Usage: taggly ext [OPTIONS] CONTENT                                           
                                                                                
- Compute toxicity score for the supplied text.                                 
+ Extract typed concepts from the supplied text as a JSON object.               
                                                                                
 ┌─ Arguments ─────────────────────────────────────────────────────────────────┐
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --threshold        FLOAT  The toxicity score threshold to assign a 'toxic'  │
-│                           label                                             │
-│                           [default: 0.5]                                    │
-│ --help                    Show this message and exit.                       │
+│ --model             TEXT     Generative model: 'gemma-1b', 'gemma-4b', or   │
+│                              'gemma-12b'                                    │
+│                              [default: gemma-1b]                            │
+│ --concepts          TEXT     Concept categories to extract                  │
+│                              [default: entities, topics, relations]         │
+│ --max-tokens        INTEGER  Maximum number of tokens to generate           │
+│                              [default: 256]                                 │
+│ --help                       Show this message and exit.                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## API
 
-`POST /tox`
+`POST /ext`
 
 **Request**
 
@@ -48,16 +52,13 @@ Usage: taggly tox [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `threshold`
+**Query parameters** (override config defaults): `model`, `concepts`, `max_tokens`
 
 **Response**
 
 ```json
 {
-  "tags": [
-    "..."
-  ],
-  "score": 0.0
+  "concepts": {}
 }
 ```
 
@@ -71,11 +72,12 @@ Usage: taggly tox [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tags` | array[string] | yes | — | — |
-| `score` | number | yes | — | — |
+| `concepts` | dict[str, array[string]] | yes | — | Extracted concepts grouped by category |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `threshold` | number | no | 0.5 | The toxicity score threshold to assign a 'toxic' label |
+| `model` | string | no | gemma-1b | Generative model: 'gemma-1b', 'gemma-4b', or 'gemma-12b' |
+| `concepts` | array[string] | no | ['entities', 'topics', 'relations'] | Concept categories to extract |
+| `max_tokens` | integer | no | 256 | Maximum number of tokens to generate |

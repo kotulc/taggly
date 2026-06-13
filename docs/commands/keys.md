@@ -21,24 +21,39 @@ curl -X POST "http://localhost:8000/keys?model=keybert" \
 ## CLI
 
 ```
-Usage: taggly keys [OPTIONS] CONTENT                                                                                                                                                   
-                                                                                                                                                                                        
- Extract keywords from the supplied text.                                                                                                                                               
-                                                                                                                                                                                        
-╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ *    content      TEXT  [required]                                                                                                                                                   │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --model                         TEXT     Extraction model to use: 'yake' or 'keybert' [default: keybert]                                                                             │
-│ --top-n                         INTEGER  Number of keywords to extract [default: 10]                                                                                                 │
-│ --ngram-max                     INTEGER  Maximum n-gram size for keyword phrases [default: 1]                                                                                        │
-│ --language                      TEXT     Language code for YAKE stop-word filtering [default: en]                                                                                    │
-│ --dedup-lim                     FLOAT    YAKE deduplication similarity threshold (0–1) [default: 0.9]                                                                                │
-│ --dedup-func                    TEXT     YAKE deduplication function (seqm, jaro, or levs) [default: seqm]                                                                           │
-│ --stop-words                    TEXT     Stop-word list for KeyBERT ('english' or None) [default: english]                                                                           │
-│ --use-mmr       --no-use-mmr             Use Maximal Marginal Relevance for KeyBERT diversity [default: no-use-mmr]                                                                  │
-│ --help                                   Show this message and exit.                                                                                                                 │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: taggly keys [OPTIONS] CONTENT                                          
+                                                                               
+ Extract keywords from the supplied text.                                      
+                                                                               
+┌─ Arguments ─────────────────────────────────────────────────────────────────┐
+│ *    content      TEXT  [required]                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─ Options ───────────────────────────────────────────────────────────────────┐
+│ --model                         TEXT     Extraction model to use: 'yake' or │
+│                                          'keybert'                          │
+│                                          [default: keybert]                 │
+│ --top-n                         INTEGER  Number of keywords to extract      │
+│                                          [default: 10]                      │
+│ --ngram-max                     INTEGER  Maximum n-gram size for keyword    │
+│                                          phrases                            │
+│                                          [default: 1]                       │
+│ --language                      TEXT     Language code for YAKE stop-word   │
+│                                          filtering                          │
+│                                          [default: en]                      │
+│ --dedup-lim                     FLOAT    YAKE deduplication similarity      │
+│                                          threshold (0–1)                    │
+│                                          [default: 0.9]                     │
+│ --dedup-func                    TEXT     YAKE deduplication function (seqm, │
+│                                          jaro, or levs)                     │
+│                                          [default: seqm]                    │
+│ --stop-words                    TEXT     Stop-word list for KeyBERT         │
+│                                          ('english' or None)                │
+│                                          [default: english]                 │
+│ --use-mmr       --no-use-mmr             Use Maximal Marginal Relevance for │
+│                                          KeyBERT diversity                  │
+│                                          [default: no-use-mmr]              │
+│ --help                                   Show this message and exit.        │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## API
