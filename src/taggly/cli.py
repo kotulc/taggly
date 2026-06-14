@@ -74,13 +74,16 @@ def _make_command_func(cmd):
 
     def wrapper(**kwargs):
         input_data = cmd.Input(**{k: v for k, v in kwargs.items() if k in input_fields})
+        config_data = None
         if cmd.Config is not None:
             config_data = cmd.config.model_copy(
                 update={k: v for k, v in kwargs.items() if k in config_fields}
             )
+        try:
             result = cmd.run(input_data, config_data)
-        else:
-            result = cmd.run(input_data)
+        except Exception as e:
+            typer.echo(f"Error: {cmd.name} failed: {e}", err=True)
+            raise typer.Exit(1)
         print(result)
 
     wrapper.__signature__ = inspect.Signature(params)

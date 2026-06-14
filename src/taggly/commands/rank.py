@@ -9,8 +9,8 @@ from taggly.models.base import AbstractBaseCommand
 
 class RankConfig(BaseModel):
     model: str = Field("all-minilm", description="Embedding model: 'all-minilm', 'bge-base', or 'bge-large'")
-    top_n: int = Field(10, description="Number of candidates to return")
     diversity: float = Field(0.5, description="MMR diversity weight (0=pure relevance, 1=pure diversity)")
+    top_n: int = Field(10, description="Number of candidates to return")
 
 
 class RankInput(BaseModel):

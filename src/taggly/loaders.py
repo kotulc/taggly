@@ -11,9 +11,9 @@ EMBED_MODELS = {
 
 # Short names mapped to full Gemma instruct identifiers for generative commands
 GEMMA_MODELS = {
-    "gemma-1b": "google/gemma-3-1b-it",
-    "gemma-4b": "google/gemma-3-4b-it",
-    "gemma-12b": "google/gemma-3-12b-it",
+    "gemma-2b": "google/gemma-4-E2B-it",
+    "gemma-4b": "google/gemma-4-E4B-it",
+    "gemma-12b": "google/gemma-4-12B-it",
 }
 
 
@@ -21,7 +21,7 @@ GEMMA_MODELS = {
 def load_embedder(name: str):
     """Load and cache a SentenceTransformer by short name or full identifier."""
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBED_MODELS.get(name.lower(), name))
+    return SentenceTransformer(EMBED_MODELS.get(name.lower(), name), token=True)
 
 
 @lru_cache(maxsize=None)

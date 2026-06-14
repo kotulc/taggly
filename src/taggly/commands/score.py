@@ -9,7 +9,6 @@ from taggly.models.base import AbstractBaseCommand
 
 class ScoreConfig(BaseModel):
     model: str = Field("all-minilm", description="Embedding model: 'all-minilm', 'bge-base', or 'bge-large'")
-    metric: str = Field("cosine", description="Similarity metric: 'cosine' or 'dot'")
 
 
 class ScoreInput(BaseModel):
@@ -41,13 +40,9 @@ class ScoreCommand(AbstractBaseCommand):
         model = load_embedder(cfg.model)
         query = model.encode(data.query)
         candidates = model.encode(data.candidates)
-        return ScoreOutput(scores=self._similarity(query, candidates, cfg.metric))
+        return ScoreOutput(scores=self._similarity(query, candidates))
 
-    def _similarity(self, query, candidates, metric: str) -> List[float]:
+    def _similarity(self, query, candidates) -> List[float]:
         """Return similarity of the query embedding to each candidate embedding."""
-        if metric == "dot":
-            import numpy as np
-            return [float(np.dot(query, c)) for c in candidates]
-
         from sentence_transformers.util import cos_sim
         return cos_sim(query, candidates).flatten().tolist()

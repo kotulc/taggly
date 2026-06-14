@@ -1,6 +1,6 @@
 """Builds a FastAPI app from a command registry."""
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 
 
 def build_api(registry) -> FastAPI:
@@ -29,7 +29,7 @@ def _add_endpoint(app, name, command):
     """
     if command.Config is not None:
         async def endpoint(data, config=Depends(command.Config)):
-            return command.run(data, config)
+            return _safe_run(command, data, config)
 
         endpoint.__annotations__ = {
             "data": command.Input,
@@ -38,9 +38,17 @@ def _add_endpoint(app, name, command):
         }
     else:
         async def endpoint(data):
-            return command.run(data)
+            return _safe_run(command, data)
 
         endpoint.__annotations__ = {"data": command.Input, "return": command.Output}
 
     endpoint.__doc__ = command.operation.__doc__
     app.post(f"/{name}", response_model=command.Output)(endpoint)
+
+
+def _safe_run(command, data, config=None):
+    """Run a command, converting model/runtime failures into a clean 503 response."""
+    try:
+        return command.run(data, config)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"{command.name} unavailable: {e}")

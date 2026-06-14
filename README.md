@@ -124,6 +124,35 @@ $env:MODE = "api"
 taggly
 ```
 
+## Model downloads
+
+Models are downloaded automatically on first use (or at warmup) and cached locally. Gated
+models such as Gemma (`desc`, `ext`) require accepting the model license on its HuggingFace
+page and authenticating. Provide a token any of these ways:
+
+```bash
+# 1. Standard HuggingFace env var (read by transformers directly)
+export HF_TOKEN=hf_xxx
+
+# 2. A .env file in the project root
+echo 'HF_TOKEN=hf_xxx' >> .env
+
+# 3. The HuggingFace CLI login (writes to the shared cache)
+hf auth login
+```
+
+If a model is unavailable (missing token, unaccepted license, or bad identifier), taggly
+reports it clearly instead of dumping a traceback:
+
+- **API startup** runs a preflight probe that loads every `WARMUP` model. If any fail, it
+  prints the offending commands and aborts with exit code 1 — the server will not start in a
+  half-broken state.
+- **API requests** return `503` with a `{"detail": "<command> unavailable: ..."}` message.
+- **CLI** prints `Error: <command> failed: ...` and exits with code 1.
+
+Only the commands listed in `WARMUP` are probed at startup, so set it to the models a given
+deployment actually requires.
+
 ## Generating docs
 
 The built-in `docs` command writes a markdown reference file to `docs/commands/` for every
@@ -145,6 +174,7 @@ All settings are read from environment variables or a `.env` file in the project
 | `PORT`     | `8000`      | API server port                                    |
 | `COMMANDS` | `{}`        | Per-command config as JSON (see below)             |
 | `WARMUP`   | `[]`        | Command names to pre-load on API startup           |
+| `HF_TOKEN` | `""`        | HuggingFace token for downloading gated models     |
 
 ### Configuration priority
 
