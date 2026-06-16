@@ -21,6 +21,7 @@ COMMANDS = list(REGISTRY.items())
 
 _DEFAULTS = {float: 1.0, int: 1, str: "x", bool: True}
 _SAMPLE = "This product is absolutely fantastic and works perfectly in every situation."
+_PAIRS = ["language models are transforming AI", "neural networks learn rich representations"]
 
 
 def _model_choices(cmd) -> list:
@@ -84,16 +85,26 @@ def test_cli_help(name, cmd):
             assert f"--{fname.replace('_', '-')}" in result.output
 
 
+def _model_payload(cmd) -> dict:
+    """Build a valid payload for test_model_config_respected, handling List[str] fields."""
+    payload = {}
+    for k, f in cmd.Input.model_fields.items():
+        origin = get_origin(f.annotation)
+        if f.annotation is str:
+            payload[k] = _SAMPLE
+        elif origin is list and get_args(f.annotation)[0] is str:
+            payload[k] = _PAIRS  # two distinct strings so embeddings and topics can differ by model
+        else:
+            payload[k] = _DEFAULTS.get(f.annotation, 1)
+    return payload
+
+
 @pytest.mark.parametrize("name,cmd", MODEL_COMMANDS)
 def test_model_config_respected(name, cmd):
     """Commands with a model config option return different output for different models."""
     choices = _model_choices(cmd)
-    payload = {
-        k: (_SAMPLE if f.annotation is str else _DEFAULTS.get(f.annotation, 1))
-        for k, f in cmd.Input.model_fields.items()
-    }
     results = [
-        API_CLIENT.post(f"/{name}", json=payload, params={"model": m}).json()
+        API_CLIENT.post(f"/{name}", json=_model_payload(cmd), params={"model": m}).json()
         for m in choices[:2]
     ]
     assert results[0] != results[1], (
