@@ -21,11 +21,15 @@ GEMMA_MODELS = {
 def load_embedder(name: str):
     """Load and cache a SentenceTransformer by short name or full identifier."""
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBED_MODELS.get(name.lower(), name), token=True)
+    return SentenceTransformer(EMBED_MODELS.get(name.lower(), name))
 
 
 @lru_cache(maxsize=None)
 def load_generator(name: str):
     """Load and cache a text-generation pipeline by short name or full identifier."""
     from transformers import pipeline
-    return pipeline("text-generation", model=GEMMA_MODELS.get(name.lower(), name))
+    from transformers import AutoTokenizer, AutoModelForMultimodalLM
+    name = GEMMA_MODELS.get(name.lower(), name)
+    tokenizer = AutoTokenizer.from_pretrained(name, clean_up_tokenization_spaces=False)
+    model = AutoModelForMultimodalLM.from_pretrained(name)
+    return pipeline("text-generation", model=model, tokenizer=tokenizer, clean_up_tokenization_spaces=False)

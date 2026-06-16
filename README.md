@@ -28,13 +28,13 @@ pip install -e .
 | `tox`    | Toxicity scoring | `threshold` |
 | `desc`   | Text description via a language model | `model`, `max_tokens` |
 | `ext`    | Typed concept extraction via a language model | `model`, `concepts`, `max_tokens` |
-| `score`  | Semantic similarity scores (cosine/dot) | `model`, `metric` |
+| `score`  | Semantic similarity scores (cosine) | `model` |
 | `rank`   | Maximal Marginal Relevance ranking | `model`, `top_n`, `diversity` |
 | `topics` | Topic discovery via BERTopic | `model`, `top_n` |
 
 Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
 `bge-base`, `bge-large`. Generative commands (`desc`, `ext`) share Gemma models —
-`gemma-1b`, `gemma-4b`, `gemma-12b`.
+`gemma-2b`, `gemma-4b`, `gemma-12b`.
 
 Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
 described in [`docs/framework.md`](docs/framework.md).
@@ -56,28 +56,24 @@ taggly polar "I love this product!"
 
 taggly tox "You are amazing!"
 # {"tags": [], "score": 0.02}
+
+taggly score "machine learning" --candidates '["deep learning", "cooking", "neural networks"]'
+# {"scores": [0.85, 0.12, 0.79]}
+
+taggly ext "Python was created by Guido van Rossum at CWI in the Netherlands."
+# {"concepts": {"concepts": [...], "entities": ["Guido van Rossum", "CWI", "Netherlands"], "topics": ["Python"]}}
+
+taggly topics "Language models are changing AI." "BERT and GPT are key examples." "Transformers power modern NLP."
+# {"topics": ["language", "models", "transformers"]}
 ```
 
 ## Running as API
 
-Start the server in the background with the built-in `start` command (and stop it with `stop`):
+Start the server with the built-in `start` command (press Ctrl+C to stop):
 
 ```bash
-taggly start   # launches the API server in the background, writes .taggly.pid
-taggly stop    # stops the running server
-```
-
-To run it in the foreground instead, set `MODE=api`:
-
-**Linux / macOS**
-```bash
-MODE=api taggly
-```
-
-**Windows (PowerShell)**
-```powershell
-$env:MODE = "api"
-taggly
+taggly start
+# Starting API server → http://127.0.0.1:8000  (Ctrl+C to stop)
 ```
 
 The server starts at `http://127.0.0.1:8000`. Interactive docs: `http://127.0.0.1:8000/docs`
@@ -100,7 +96,7 @@ When a taggly API server is already running, CLI commands automatically delegate
 
 ```bash
 # Terminal 1 — start the API
-MODE=api taggly
+taggly start
 
 # Terminal 2 — CLI auto-delegates; no local model load
 taggly keys "natural language processing"  # → [keys] api
@@ -110,18 +106,20 @@ The CLI prints `[command] api` or `[command] local` to stderr so you can always 
 
 ## Model warmup
 
-Heavy models (transformers, spacy, etc.) are loaded lazily on first use. Use `WARMUP` to pre-load them at API startup so the first request is fast:
+Heavy models are loaded lazily on first use. Set `WARMUP` in `.env` to pre-load them at
+startup so the first request is fast:
 
-**Linux / macOS**
 ```bash
-WARMUP='["keys", "ents"]' MODE=api taggly
+# .env
+WARMUP='["keys", "ents"]'
 ```
 
-**Windows (PowerShell)**
-```powershell
-$env:WARMUP = '["keys", "ents"]'
-$env:MODE = "api"
-taggly
+```bash
+taggly start
+# [keys] loading model...
+# [ents] loading model...
+# All models loaded.
+# Starting API server → http://127.0.0.1:8000  (Ctrl+C to stop)
 ```
 
 ## Model downloads
@@ -165,39 +163,55 @@ taggly docs
 
 ## Configuration
 
-All settings are read from environment variables or a `.env` file in the project root.
+Server settings are read from environment variables or a `.env` file in the project root.
 
-| Variable   | Default     | Description                                        |
-|------------|-------------|----------------------------------------------------|
-| `MODE`     | `cli`       | `cli` or `api`                                     |
-| `HOST`     | `127.0.0.1` | API server bind address                            |
-| `PORT`     | `8000`      | API server port                                    |
-| `COMMANDS` | `{}`        | Per-command config as JSON (see below)             |
-| `WARMUP`   | `[]`        | Command names to pre-load on API startup           |
-| `HF_TOKEN` | `""`        | HuggingFace token for downloading gated models     |
+| Variable   | Default     | Description                                    |
+|------------|-------------|------------------------------------------------|
+| `MODE`     | `cli`       | `cli` or `api`                                 |
+| `HOST`     | `127.0.0.1` | API server bind address                        |
+| `PORT`     | `8000`      | API server port                                |
+| `WARMUP`   | `[]`        | Command names to pre-load on API startup       |
+| `HF_TOKEN` | `""`        | HuggingFace token for downloading gated models |
+
+### Per-command defaults (config.yaml)
+
+Place a `config.yaml` in the project root to override default values for any command. Only
+include the settings you want to change:
+
+```yaml
+# config.yaml
+keys:
+  top_n: 5
+  model: yake
+
+ext:
+  max_tokens: 512
+
+topics:
+  top_n: 5
+```
 
 ### Configuration priority
 
 ```
-CLI --flag / API ?query_param  >  COMMANDS env var  >  Config field default
+CLI --flag / API ?query_param  >  config.yaml  >  Config field default
 ```
 
 ```bash
-# 1. Config field default (top_n=3):
+# 1. Config field default (top_n=10):
 taggly keys "natural language processing"
 
-# 2. COMMANDS env var overrides the default (top_n=10):
-COMMANDS='{"keys": {"top_n": 10}}' taggly keys "natural language processing"
+# 2. config.yaml overrides the default:
+#    keys: { top_n: 5 }  →  taggly keys "natural language processing"
 
-# 3. Per-call --flag overrides the env var (top_n=1):
-COMMANDS='{"keys": {"top_n": 10}}' taggly keys "natural language processing" --top-n 1
+# 3. Per-call --flag always wins:
+taggly keys "natural language processing" --top-n 1
 ```
 
 The same priority applies to the API via query params:
 
 ```bash
-COMMANDS='{"keys": {"top_n": 10}}' MODE=api taggly
-
+# config.yaml default (top_n: 5) is used unless overridden per-request:
 curl -X POST "http://127.0.0.1:8000/keys?top_n=1" \
   -H "Content-Type: application/json" \
   -d '{"content": "natural language processing"}'
@@ -207,8 +221,8 @@ curl -X POST "http://127.0.0.1:8000/keys?top_n=1" \
 
 Taggly implements a modular command framework. Drop a module into `src/taggly/commands/` and it is automatically registered as both a CLI sub-command and an API endpoint — with no wiring required.
 
-The names `docs`, `start`, and `stop` are reserved for the built-in CLI commands; a discovered
-command using one of those names is skipped with a warning.
+The names `docs` and `start` are reserved for built-in CLI commands; a discovered command
+using one of those names is skipped with a warning.
 
 ### Adding commands
 

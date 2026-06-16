@@ -14,15 +14,14 @@ from taggly.models.base import AbstractBaseCommand
 _SRC_ROOT = Path(__file__).parent.parent
 
 # Names reserved for built-in CLI commands; user commands with these names are skipped.
-_RESERVED = {"docs", "start", "stop"}
+_RESERVED = {"docs", "start"}
 
 
 def discover_commands(commands_dir: Path=None, app_config=None) -> Dict[str, AbstractBaseCommand]:
     """Scan commands_dir for AbstractBaseCommand subclasses and return a name→instance map.
 
-    If app_config is provided, each command's Config is instantiated from
-    app_config.commands[name] and, in CLI mode, the command is given an api_url
-    if the API server is already running at app_config.host:port.
+    Per-command defaults are read from config.yaml in the working directory. In CLI mode,
+    each command is given an api_url if the API server is already running.
     """
     if commands_dir is None:
         commands_dir = Path(__file__).parent / "commands"
@@ -31,6 +30,7 @@ def discover_commands(commands_dir: Path=None, app_config=None) -> Dict[str, Abs
         return {}
 
     api_base = _check_api(app_config)
+    cmd_defaults = _load_config()
     registry = {}
 
     for file in commands_dir.rglob("*.py"):
@@ -48,13 +48,28 @@ def discover_commands(commands_dir: Path=None, app_config=None) -> Dict[str, Abs
             if cmd_name in _RESERVED:
                 print(f"warning: '{cmd_name}' is a reserved command name, skipping.", file=sys.stderr)
                 continue
-            raw = app_config.commands.get(cmd_name, {}) if (app_config and cmd_name) else {}
+            raw = cmd_defaults.get(cmd_name, {}) if cmd_name else {}
             cmd_config = obj.Config(**raw) if obj.Config is not None else None
             api_url = f"{api_base}/{cmd_name}" if (api_base and cmd_name) else None
-            instance = obj(api_url=api_url, config=cmd_config)
+            instance = obj(
+                api_url=api_url,
+                config=cmd_config,
+                api_timeout=app_config.api_timeout if app_config else 300.0,
+                connect_timeout=app_config.connect_timeout if app_config else 2.0,
+            )
             registry[instance.name] = instance
 
     return registry
+
+
+def _load_config() -> dict:
+    """Load per-command defaults from config.yaml in the working directory."""
+    import yaml
+    path = Path("config.yaml")
+    if not path.exists():
+        return {}
+    with path.open() as f:
+        return yaml.safe_load(f) or {}
 
 
 def _check_api(app_config) -> str | None:

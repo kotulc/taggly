@@ -18,11 +18,11 @@ class KeysConfig(BaseModel):
 
 
 class KeysInput(BaseModel):
-    content: str
+    content: str = Field(..., description="A text string to extract keywords from.")
 
 
 class KeysOutput(BaseModel):
-    keywords: List[str]
+    keywords: List[str] = Field(..., description="The list of extracted keywords.")
 
 
 class KeysCommand(AbstractBaseCommand):
@@ -31,9 +31,8 @@ class KeysCommand(AbstractBaseCommand):
     Output = KeysOutput
     Config = KeysConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else KeysConfig()
-        super().__init__(api_url, cfg)
+    def __init__(self, api_url: str=None, config: BaseModel=None, **kwargs):
+        super().__init__(api_url, config, **kwargs)
         self._kb = None  # cached KeyBERT model — only loaded on first local use
 
     def warmup(self) -> None:

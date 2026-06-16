@@ -12,11 +12,11 @@ class EntsConfig(BaseModel):
 
 
 class EntsInput(BaseModel):
-    content: str
+    content: str = Field(..., description="A text string to extract named entities from.")
 
 
 class EntsOutput(BaseModel):
-    entities: List[str]
+    entities: List[str] = Field(..., description="The list of extracted entities.")
 
 
 class EntsCommand(AbstractBaseCommand):
@@ -25,9 +25,8 @@ class EntsCommand(AbstractBaseCommand):
     Output = EntsOutput
     Config = EntsConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else EntsConfig()
-        super().__init__(api_url, cfg)
+    def __init__(self, api_url: str=None, config: BaseModel=None, **kwargs):
+        super().__init__(api_url, config, **kwargs)
         self._spacy = None  # cached spacy model — only loaded on first local use
 
     def warmup(self) -> None:

@@ -15,6 +15,11 @@ def build_api(registry) -> FastAPI:
             for name, cmd in registry.items()
         }
 
+    @app.get("/status")
+    async def status():
+        """Report warmup state for every command. warmed_up=true means the model is cached."""
+        return {name: {"warmed_up": cmd.warmed_up} for name, cmd in registry.items()}
+
     for name, command in registry.items():
         _add_endpoint(app, name, command)
 

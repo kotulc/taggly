@@ -13,12 +13,12 @@ class PolarConfig(BaseModel):
 
 
 class PolarInput(BaseModel):
-    content: str
+    content: str = Field(..., description="A text string to compute polarity sentiment for.")
 
 
 class PolarOutput(BaseModel):
-    tags: list[str]
-    scores: dict[str, float]
+    tags: list[str] = Field(..., description="The dominant polarity label(s): 'positive', 'neutral', or 'negative'.")
+    scores: dict[str, float] = Field(..., description="Polarity scores keyed by label.")
 
 
 class PolarCommand(AbstractBaseCommand):
@@ -27,9 +27,8 @@ class PolarCommand(AbstractBaseCommand):
     Output = PolarOutput
     Config = PolarConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else PolarConfig()
-        super().__init__(api_url, cfg)
+    def __init__(self, api_url: str=None, config: BaseModel=None, **kwargs):
+        super().__init__(api_url, config, **kwargs)
         self._vader = None  # cached VADER analyzer — only loaded on first local use
 
     def warmup(self) -> None:

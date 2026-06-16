@@ -10,16 +10,16 @@ from taggly.models.base import AbstractBaseCommand
 class RankConfig(BaseModel):
     model: str = Field("all-minilm", description="Embedding model: 'all-minilm', 'bge-base', or 'bge-large'")
     diversity: float = Field(0.5, description="MMR diversity weight (0=pure relevance, 1=pure diversity)")
-    top_n: int = Field(10, description="Number of candidates to return")
+    top_n: int = Field(3, description="Number of candidates to return")
 
 
 class RankInput(BaseModel):
-    query: str
-    candidates: List[str]
+    query: str = Field(..., description="The reference text to rank candidates against.")
+    candidates: List[str] = Field(..., description="A list of candidate strings to rank by relevance.")
 
 
 class RankOutput(BaseModel):
-    ranked: List[str]
+    ranked: List[str] = Field(..., description="The list of strings ranked with MMR.")
 
 
 class RankCommand(AbstractBaseCommand):
@@ -27,10 +27,6 @@ class RankCommand(AbstractBaseCommand):
     Input = RankInput
     Output = RankOutput
     Config = RankConfig
-
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else RankConfig()
-        super().__init__(api_url, cfg)
 
     def warmup(self) -> None:
         """Pre-load the configured embedding model."""

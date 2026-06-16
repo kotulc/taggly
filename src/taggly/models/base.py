@@ -1,12 +1,10 @@
 """Abstract base class for all commands."""
 
 import sys
-
-import httpx
-
 from abc import ABC, abstractmethod
 from typing import Type
 
+import httpx
 from pydantic import BaseModel
 
 
@@ -17,9 +15,13 @@ class AbstractBaseCommand(ABC):
     Output: Type[BaseModel]
     Config: Type[BaseModel] | None = None
 
-    def __init__(self, api_url: str=None, config: BaseModel=None):
+    def __init__(self, api_url: str=None, config: BaseModel=None,
+                 api_timeout: float=300.0, connect_timeout: float=2.0):
         self.api_url = api_url
-        self.config = config
+        self.config = config if config is not None else (self.Config() if self.Config else None)
+        self.api_timeout = api_timeout
+        self.connect_timeout = connect_timeout
+        self.warmed_up = False
 
     def run(self, data: BaseModel, config: BaseModel=None) -> BaseModel:
         """Delegate to the API if available, otherwise call operation() locally."""
@@ -29,10 +31,10 @@ class AbstractBaseCommand(ABC):
                 result = self._call_api(self.api_url, data, config)
                 print(f"[{self.name}] api", file=sys.stderr)
                 return result
-            except Exception:
-                pass
-
-        print(f"[{self.name}] local", file=sys.stderr)
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                pass  # server not reachable, silent local fallback
+            except Exception as e:
+                print(f"[{self.name}] api error ({type(e).__name__}): {e}", file=sys.stderr)
         return self.operation(data, config)
 
     def warmup(self) -> None:
@@ -44,11 +46,10 @@ class AbstractBaseCommand(ABC):
         """Command description (used by CLI + API)."""
         pass
 
-    @classmethod
-    def _call_api(cls, api_url: str, data: BaseModel, config: BaseModel) -> BaseModel:
+    def _call_api(self, api_url: str, data: BaseModel, config: BaseModel) -> BaseModel:
         """POST to api_url with input as body and config fields as query params."""
         params = config.model_dump() if config else {}
-        response = httpx.post(api_url, json=data.model_dump(), params=params, timeout=5.0)
+        timeout = httpx.Timeout(self.api_timeout, connect=self.connect_timeout)
+        response = httpx.post(api_url, json=data.model_dump(), params=params, timeout=timeout)
         response.raise_for_status()
-        
-        return cls.Output(**response.json())
+        return self.Output(**response.json())

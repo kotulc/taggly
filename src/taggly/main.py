@@ -25,6 +25,8 @@ def main():
 
 def _probe(registry, names) -> None:
     """Load each warmup command's model, aborting startup if any are unavailable."""
+    if not names:
+        return
     failures = []
     for name in names:
         if name not in registry:
@@ -32,6 +34,7 @@ def _probe(registry, names) -> None:
         print(f"[{name}] loading model...", file=sys.stderr)
         try:
             registry[name].warmup()
+            registry[name].warmed_up = True
         except Exception as e:
             failures.append((name, e))
             print(f"[{name}] failed", file=sys.stderr)

@@ -12,12 +12,12 @@ class ScoreConfig(BaseModel):
 
 
 class ScoreInput(BaseModel):
-    query: str
-    candidates: List[str]
+    query: str = Field(..., description="The reference text to compare candidates against.")
+    candidates: List[str] = Field(..., description="A list of candidate strings to score.")
 
 
 class ScoreOutput(BaseModel):
-    scores: List[float]
+    scores: List[float] = Field(..., description="Cosine similarity scores in the same order as candidates.")
 
 
 class ScoreCommand(AbstractBaseCommand):
@@ -25,10 +25,6 @@ class ScoreCommand(AbstractBaseCommand):
     Input = ScoreInput
     Output = ScoreOutput
     Config = ScoreConfig
-
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else ScoreConfig()
-        super().__init__(api_url, cfg)
 
     def warmup(self) -> None:
         """Pre-load the configured embedding model."""

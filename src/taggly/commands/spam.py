@@ -10,12 +10,12 @@ class SpamConfig(BaseModel):
 
 
 class SpamInput(BaseModel):
-    content: str
+    content: str = Field(..., description="A text string to score for spam.")
 
 
 class SpamOutput(BaseModel):
-    tags: list[str]
-    score: float
+    tags: list[str] = Field(..., description="Label list — contains 'spam' if the threshold is exceeded.")
+    score: float = Field(..., description="Spam probability score from 0 to 1.")
 
 
 class SpamCommand(AbstractBaseCommand):
@@ -24,9 +24,8 @@ class SpamCommand(AbstractBaseCommand):
     Output = SpamOutput
     Config = SpamConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else SpamConfig()
-        super().__init__(api_url, cfg)
+    def __init__(self, api_url: str=None, config: BaseModel=None, **kwargs):
+        super().__init__(api_url, config, **kwargs)
         self._tokenizer = None  # BERT tokenizer — only loaded on first local use
         self._classifier = None  # BERT classifier — only loaded on first local use
 

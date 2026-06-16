@@ -21,6 +21,7 @@ dependencies = [
   "yake",
   "numpy",
   "httpx",
+  "pyyaml",
 ]
 
 [project.optional-dependencies]

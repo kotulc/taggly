@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field
 from taggly.loaders import load_generator
 from taggly.models.base import AbstractBaseCommand
 
+# Define generative prompt template
+PROMPT = "Describe the following text in a single short sentence:\n\n{}"
+
 
 class DescConfig(BaseModel):
     model: str = Field("gemma-2b", description="Generative model: 'gemma-2b', 'gemma-4b', or 'gemma-12b'")
@@ -12,11 +15,11 @@ class DescConfig(BaseModel):
 
 
 class DescInput(BaseModel):
-    content: str
+    content: str = Field(..., description="A text string to generate a description from.")
 
 
 class DescOutput(BaseModel):
-    description: str
+    description: str = Field(..., description="The generated description.")
 
 
 class DescCommand(AbstractBaseCommand):
@@ -25,17 +28,16 @@ class DescCommand(AbstractBaseCommand):
     Output = DescOutput
     Config = DescConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None):
-        cfg = config if config is not None else DescConfig()
-        super().__init__(api_url, cfg)
-
     def warmup(self) -> None:
         """Pre-load the configured generative model."""
         load_generator((self.config or DescConfig()).model)
 
     def operation(self, data: DescInput, config: DescConfig=None) -> DescOutput:
         """Generate a concise description of the supplied text."""
+        from transformers import GenerationConfig
         cfg = config or self.config or DescConfig()
-        prompt = f"Describe the following text in a single sentence:\n\n{data.content}"
-        output = load_generator(cfg.model)(prompt, max_new_tokens=cfg.max_tokens, return_full_text=False)
-        return DescOutput(description=output[0]["generated_text"].strip())
+        messages = [{"role": "user", "content": PROMPT.format(data.content)}]
+        output = load_generator(cfg.model)(messages, generation_config=GenerationConfig(max_new_tokens=cfg.max_tokens))
+        result = output[0]["generated_text"]
+        text = result[-1]["content"] if isinstance(result, list) else result
+        return DescOutput(description=text.strip())
