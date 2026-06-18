@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 from taggly.models.base import AbstractBaseCommand
 
 
-class SpamConfig(BaseModel):
-    threshold: float = Field(0.5, description="The spam score threshold to assign a 'spam' label")
+class SpamParams(BaseModel):
+    threshold: float = Field(0.5, description="Spam probability threshold for assigning a 'spam' label")
 
 
 class SpamInput(BaseModel):
@@ -20,14 +20,14 @@ class SpamOutput(BaseModel):
 
 class SpamCommand(AbstractBaseCommand):
     name = "spam"
+    Params = SpamParams
     Input = SpamInput
     Output = SpamOutput
-    Config = SpamConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None, **kwargs):
-        super().__init__(api_url, config, **kwargs)
-        self._tokenizer = None  # BERT tokenizer — only loaded on first local use
-        self._classifier = None  # BERT classifier — only loaded on first local use
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._tokenizer = None
+        self._classifier = None
 
     def warmup(self) -> None:
         """Pre-load the spam-detector BERT model and tokenizer."""
@@ -37,20 +37,14 @@ class SpamCommand(AbstractBaseCommand):
             self._tokenizer = AutoTokenizer.from_pretrained(model_id)
             self._classifier = AutoModelForSequenceClassification.from_pretrained(model_id)
 
-    def operation(self, data: SpamInput, config: BaseModel=None) -> SpamOutput:
+    def operation(self, data: SpamInput, params: SpamParams=None) -> SpamOutput:
         """Compute spam score for the supplied text."""
         import torch
-
         if self._tokenizer is None:
             self.warmup()
-
+        p = params or SpamParams()
         inputs = self._tokenizer(data.content, return_tensors="pt")
         with torch.no_grad():
             logits = self._classifier(**inputs).logits
-
-        # Compute spam score and assign "spam" tag if threshold is achieved
-        cfg = config or self.config or SpamConfig()
         score = torch.softmax(logits, dim=1).flatten()[1].item()
-        tags = ["spam"] if score >= cfg.threshold else []
-
-        return SpamOutput(tags=tags, score=score)
+        return SpamOutput(tags=["spam"] if score >= p.threshold else [], score=score)

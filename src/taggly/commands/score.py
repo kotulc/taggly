@@ -22,23 +22,22 @@ class ScoreOutput(BaseModel):
 
 class ScoreCommand(AbstractBaseCommand):
     name = "score"
+    Config = ScoreConfig
     Input = ScoreInput
     Output = ScoreOutput
-    Config = ScoreConfig
+
+    def __init__(self, config: ScoreConfig=None, **kwargs):
+        super().__init__(**kwargs)
+        self._config = config if config is not None else ScoreConfig()
 
     def warmup(self) -> None:
         """Pre-load the configured embedding model."""
-        load_embedder((self.config or ScoreConfig()).model)
+        load_embedder(self._config.model)
 
-    def operation(self, data: ScoreInput, config: ScoreConfig=None) -> ScoreOutput:
+    def operation(self, data: ScoreInput, params: BaseModel=None) -> ScoreOutput:
         """Score each candidate's semantic similarity to the query."""
-        cfg = config or self.config or ScoreConfig()
-        model = load_embedder(cfg.model)
+        from sentence_transformers.util import cos_sim
+        model = load_embedder(self._config.model)
         query = model.encode(data.query)
         candidates = model.encode(data.candidates)
-        return ScoreOutput(scores=self._similarity(query, candidates))
-
-    def _similarity(self, query, candidates) -> List[float]:
-        """Return similarity of the query embedding to each candidate embedding."""
-        from sentence_transformers.util import cos_sim
-        return cos_sim(query, candidates).flatten().tolist()
+        return ScoreOutput(scores=cos_sim(query, candidates).flatten().tolist())

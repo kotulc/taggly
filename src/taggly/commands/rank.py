@@ -9,8 +9,11 @@ from taggly.models.base import AbstractBaseCommand
 
 class RankConfig(BaseModel):
     model: str = Field("all-minilm", description="Embedding model: 'all-minilm', 'bge-base', or 'bge-large'")
-    diversity: float = Field(0.5, description="MMR diversity weight (0=pure relevance, 1=pure diversity)")
+
+
+class RankParams(BaseModel):
     top_n: int = Field(3, description="Number of candidates to return")
+    diversity: float = Field(0.5, description="MMR diversity weight (0=pure relevance, 1=pure diversity)")
 
 
 class RankInput(BaseModel):
@@ -24,21 +27,26 @@ class RankOutput(BaseModel):
 
 class RankCommand(AbstractBaseCommand):
     name = "rank"
+    Config = RankConfig
+    Params = RankParams
     Input = RankInput
     Output = RankOutput
-    Config = RankConfig
+
+    def __init__(self, config: RankConfig=None, **kwargs):
+        super().__init__(**kwargs)
+        self._config = config if config is not None else RankConfig()
 
     def warmup(self) -> None:
         """Pre-load the configured embedding model."""
-        load_embedder((self.config or RankConfig()).model)
+        load_embedder(self._config.model)
 
-    def operation(self, data: RankInput, config: RankConfig=None) -> RankOutput:
+    def operation(self, data: RankInput, params: RankParams=None) -> RankOutput:
         """Rank candidates by relevance to the query while maximizing diversity."""
-        cfg = config or self.config or RankConfig()
-        model = load_embedder(cfg.model)
+        p = params or RankParams()
+        model = load_embedder(self._config.model)
         query = model.encode(data.query)
         candidates = model.encode(data.candidates)
-        order = self._mmr(query, candidates, cfg.diversity, cfg.top_n)
+        order = self._mmr(query, candidates, p.diversity, p.top_n)
         return RankOutput(ranked=[data.candidates[i] for i in order])
 
     def _mmr(self, query, candidates, diversity: float, top_n: int) -> List[int]:

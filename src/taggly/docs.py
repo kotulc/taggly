@@ -6,7 +6,6 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-# Sample value for docs generation
 _SAMPLE = "Language models are transforming how we interact with text and data."
 
 
@@ -16,13 +15,11 @@ def generate_docs(registry, cli_app, output_dir: Path = None) -> None:
     out.mkdir(exist_ok=True)
     runner = CliRunner()
 
-    # Copy README.md (from cwd, where taggly docs is invoked) as the landing page
     readme = Path("README.md")
     if readme.exists():
         shutil.copy2(readme, out / "home.md")
         print("  docs/home.md")
 
-    # Write all command docs
     cmds_dir = out / "commands"
     cmds_dir.mkdir(exist_ok=True)
     for name, cmd in registry.items():
@@ -33,22 +30,26 @@ def generate_docs(registry, cli_app, output_dir: Path = None) -> None:
 
 def _doc(name: str, cmd, runner: CliRunner, cli_app) -> str:
     """Build the full markdown document for one command."""
+    config_cls = getattr(cmd, "Config", None)
+    params_cls = getattr(cmd, "Params", None)
     parts = [
         f"# '{name}' Command\n",
         f"{cmd.operation.__doc__.strip()}\n",
-        _examples_section(name, cmd),
+        _examples_section(name, cmd, params_cls),
         _cli_section(name, runner, cli_app),
-        _api_section(name, cmd),
+        _api_section(name, cmd, params_cls),
         _schema_section("Input", cmd.Input),
         _schema_section("Output", cmd.Output),
     ]
-    if cmd.Config is not None:
-        parts.append(_schema_section("Config", cmd.Config))
+    if config_cls is not None:
+        parts.append(_schema_section("Config", config_cls))
+    if params_cls is not None:
+        parts.append(_schema_section("Params", params_cls))
     return "\n".join(parts)
 
 
-def _examples_section(name: str, cmd) -> str:
-    """One CLI invocation and one curl call, each using the first config option if present."""
+def _examples_section(name: str, cmd, params_cls) -> str:
+    """One CLI invocation and one curl call, using the first Params field as example."""
     cli_args = " ".join(
         f'"{_SAMPLE}"' if f.annotation is str else str(_example_val(s))
         for f, s in zip(
@@ -65,8 +66,8 @@ def _examples_section(name: str, cmd) -> str:
     })
 
     opt, param = "", ""
-    if cmd.Config is not None:
-        fname, field = next(iter(cmd.Config.model_fields.items()))
+    if params_cls is not None:
+        fname, field = next(iter(params_cls.model_fields.items()))
         val = field.default
         flag = f"--{fname.replace('_', '-')}"
         opt = f" --no-{fname.replace('_', '-')}" if val is False else f" {flag} {val}"
@@ -89,16 +90,16 @@ def _cli_section(name: str, runner: CliRunner, cli_app) -> str:
     return f"## CLI\n\n```\n{result.output.strip()}\n```\n"
 
 
-def _api_section(name: str, cmd) -> str:
+def _api_section(name: str, cmd, params_cls) -> str:
     """Build the API reference with example request and response JSON."""
     req = json.dumps(_example(cmd.Input), indent=2)
     res = json.dumps(_example(cmd.Output), indent=2)
 
     parts = [f"## API\n", f"`POST /{name}`\n", f"**Request**\n\n```json\n{req}\n```\n"]
 
-    if cmd.Config is not None:
-        param_names = ", ".join(f"`{k}`" for k in cmd.Config.model_fields)
-        parts.append(f"**Query parameters** (override config defaults): {param_names}\n")
+    if params_cls is not None:
+        param_names = ", ".join(f"`{k}`" for k in params_cls.model_fields)
+        parts.append(f"**Query parameters**: {param_names}\n")
 
     parts.append(f"**Response**\n\n```json\n{res}\n```\n")
     return "\n".join(parts)

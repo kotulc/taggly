@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 from taggly.models.base import AbstractBaseCommand
 
 
-class ToxConfig(BaseModel):
-    threshold: float = Field(0.5, description="The toxicity score threshold to assign a 'toxic' label")
+class ToxParams(BaseModel):
+    threshold: float = Field(0.5, description="Toxicity probability threshold for assigning a 'toxic' label")
 
 
 class ToxInput(BaseModel):
@@ -20,13 +20,13 @@ class ToxOutput(BaseModel):
 
 class ToxCommand(AbstractBaseCommand):
     name = "tox"
+    Params = ToxParams
     Input = ToxInput
     Output = ToxOutput
-    Config = ToxConfig
 
-    def __init__(self, api_url: str=None, config: BaseModel=None, **kwargs):
-        super().__init__(api_url, config, **kwargs)
-        self._pipe = None  # toxic-bert pipeline — only loaded on first local use
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._pipe = None
 
     def warmup(self) -> None:
         """Pre-load the toxic-bert pipeline."""
@@ -34,13 +34,10 @@ class ToxCommand(AbstractBaseCommand):
             from transformers import pipeline
             self._pipe = pipeline("text-classification", model="unitary/toxic-bert")
 
-    def operation(self, data: ToxInput, config: BaseModel=None) -> ToxOutput:
+    def operation(self, data: ToxInput, params: ToxParams=None) -> ToxOutput:
         """Compute toxicity score for the supplied text."""
         if self._pipe is None:
             self.warmup()
-        
-        score = self._pipe(data.content)[0]['score']
-        cfg = config if config is not None else ToxConfig()
-        tags = ["toxic"] if score >= cfg.threshold else []
-
-        return ToxOutput(tags=tags, score=score)
+        p = params or ToxParams()
+        score = self._pipe(data.content)[0]["score"]
+        return ToxOutput(tags=["toxic"] if score >= p.threshold else [], score=score)

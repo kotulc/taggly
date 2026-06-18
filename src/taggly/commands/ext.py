@@ -17,8 +17,11 @@ PROMPT = (
 
 class ExtConfig(BaseModel):
     model: str = Field("gemma-2b", description="Generative model: 'gemma-2b', 'gemma-4b', or 'gemma-12b'")
-    concepts: str = Field("concepts,entities,topics", description="Comma-separated concept categories to extract")
     max_tokens: int = Field(256, description="Maximum number of tokens to generate")
+
+
+class ExtParams(BaseModel):
+    concepts: str = Field("concepts,entities,topics", description="Comma-separated concept categories to extract")
 
 
 class ExtInput(BaseModel):
@@ -31,21 +34,28 @@ class ExtOutput(BaseModel):
 
 class ExtCommand(AbstractBaseCommand):
     name = "ext"
+    Config = ExtConfig
+    Params = ExtParams
     Input = ExtInput
     Output = ExtOutput
-    Config = ExtConfig
+
+    def __init__(self, config: ExtConfig=None, **kwargs):
+        super().__init__(**kwargs)
+        # Store language model system configurations
+        self._config = config if config else ExtConfig()
 
     def warmup(self) -> None:
         """Pre-load the configured generative model."""
-        load_generator(self.config.model)
+        load_generator(self._config.model)
 
-    def operation(self, data: ExtInput, config: ExtConfig=None) -> ExtOutput:
+    def operation(self, data: ExtInput, params: ExtParams=None) -> ExtOutput:
         """Extract typed concepts from the supplied text as a JSON object."""
         from transformers import GenerationConfig
-        cfg = config or self.config
-        keys = [c.strip() for c in cfg.concepts.split(",") if c.strip()]
+        params = params if params else ExtParams()
+        keys = [c.strip() for c in params.concepts.split(",") if c.strip()]
         messages = [{"role": "user", "content": PROMPT.format(", ".join(keys), data.content)}]
-        output = load_generator(cfg.model)(messages, generation_config=GenerationConfig(max_new_tokens=cfg.max_tokens))
+        gen_config = GenerationConfig(max_new_tokens=self._config.max_tokens)
+        output = load_generator(self._config.model)(messages, generation_config=gen_config)
         result = output[0]["generated_text"]
         text = result[-1]["content"] if isinstance(result, list) else result
         return ExtOutput(concepts=self._parse(text, keys))

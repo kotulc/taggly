@@ -27,18 +27,20 @@ def build_api(registry) -> FastAPI:
 
 
 def _add_endpoint(app, name, command):
-    """Register a single POST endpoint for a command, pulling docs from run.__doc__.
+    """Register a POST endpoint for a command.
 
-    Config fields are exposed as query parameters so callers can override defaults
-    per request. Use the COMMANDS env var to set deployment-level defaults.
+    Params fields (if defined) are exposed as query parameters so callers can
+    override per request. Config is system-level and not exposed per-request.
     """
-    if command.Config is not None:
-        async def endpoint(data, config=Depends(command.Config)):
-            return _safe_run(command, data, config)
+    params_cls = getattr(command, "Params", None)
+
+    if params_cls is not None:
+        async def endpoint(data, params=Depends(params_cls)):
+            return _safe_run(command, data, params)
 
         endpoint.__annotations__ = {
             "data": command.Input,
-            "config": command.Config,
+            "params": params_cls,
             "return": command.Output,
         }
     else:
@@ -51,9 +53,9 @@ def _add_endpoint(app, name, command):
     app.post(f"/{name}", response_model=command.Output)(endpoint)
 
 
-def _safe_run(command, data, config=None):
-    """Run a command, converting model/runtime failures into a clean 503 response."""
+def _safe_run(command, data, params=None):
+    """Run a command, converting failures into a clean 503 response."""
     try:
-        return command.run(data, config)
+        return command.run(data, params)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"{command.name} unavailable: {e}")

@@ -10,7 +10,7 @@ import taggly.commands
 
 
 class _FakeEmbedder:
-    """Stub embedder — output is deterministic per (model_name, text) so models are distinguishable."""
+    """Stub embedder — deterministic output per (model_name, text) pair."""
     DIM = 4
 
     def __init__(self, name: str):
@@ -24,13 +24,13 @@ class _FakeEmbedder:
 
 
 class _FakeGenerator:
-    """Stub generator — returns model-name-tagged JSON so tests can distinguish models."""
+    """Stub generator — returns valid JSON so concept parsing doesn't silently fail."""
 
     def __init__(self, name: str):
         self._name = name
 
     def __call__(self, messages, generation_config=None, **kwargs):
-        text = f'{{"entities":["{self._name}"],"topics":["stub"],"concepts":["test"]}}'
+        text = '{"entities":["stub"],"topics":["stub"],"concepts":["stub"]}'
         if isinstance(messages, list):
             return [{"generated_text": list(messages) + [{"role": "assistant", "content": text}]}]
         return [{"generated_text": text}]
@@ -48,9 +48,9 @@ def _fake_generator(name: str) -> _FakeGenerator:
     return _generator_cache.setdefault(name, _FakeGenerator(name))
 
 
-def _fake_topics(self, documents, cfg):
-    """Return model-specific keywords so test_model_config_respected can distinguish models."""
-    return [f"{cfg.model}:topic", "stub"] if len(documents) >= 2 else []
+def _fake_topics(self, documents, params):
+    """Stub BERTopic — returns fixed keywords without running the real model."""
+    return ["stub_topic", "keyword"] if len(documents) >= 2 else []
 
 
 @pytest.fixture(autouse=True)

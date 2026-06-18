@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 from taggly.loaders import load_generator
 from taggly.models.base import AbstractBaseCommand
 
-# Define generative prompt template
 PROMPT = "Describe the following text in a single short sentence:\n\n{}"
 
 
@@ -24,20 +23,25 @@ class DescOutput(BaseModel):
 
 class DescCommand(AbstractBaseCommand):
     name = "desc"
+    Config = DescConfig
     Input = DescInput
     Output = DescOutput
-    Config = DescConfig
+
+    def __init__(self, config: DescConfig=None, **kwargs):
+        super().__init__(**kwargs)
+        self._config = config if config is not None else DescConfig()
 
     def warmup(self) -> None:
         """Pre-load the configured generative model."""
-        load_generator((self.config or DescConfig()).model)
+        load_generator(self._config.model)
 
-    def operation(self, data: DescInput, config: DescConfig=None) -> DescOutput:
+    def operation(self, data: DescInput, params: BaseModel=None) -> DescOutput:
         """Generate a concise description of the supplied text."""
         from transformers import GenerationConfig
-        cfg = config or self.config or DescConfig()
         messages = [{"role": "user", "content": PROMPT.format(data.content)}]
-        output = load_generator(cfg.model)(messages, generation_config=GenerationConfig(max_new_tokens=cfg.max_tokens))
+        output = load_generator(self._config.model)(
+            messages, generation_config=GenerationConfig(max_new_tokens=self._config.max_tokens)
+        )
         result = output[0]["generated_text"]
         text = result[-1]["content"] if isinstance(result, list) else result
         return DescOutput(description=text.strip())

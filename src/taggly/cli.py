@@ -24,45 +24,45 @@ def _make_command_func(cmd):
     Return a function whose signature Typer can introspect.
 
     Input fields  → positional arguments (typer.Argument).
-    Config fields → --flag options (typer.Option) defaulting to env-resolved values.
+    Params fields → --flag options (typer.Option) with class-level defaults.
+    Config is system-level and not exposed as CLI flags.
     """
-    params = []
+    params_cls = getattr(cmd, "Params", None)
     input_fields = set(cmd.Input.model_fields)
-    config_fields = set(cmd.Config.model_fields) if cmd.Config is not None else set()
+    param_fields = set(params_cls.model_fields) if params_cls else set()
+    default_params = params_cls() if params_cls else None
+
+    sig_params = []
 
     for fname, field in cmd.Input.model_fields.items():
         default = inspect.Parameter.empty if field.is_required() else field.default
-        params.append(inspect.Parameter(
+        sig_params.append(inspect.Parameter(
             fname,
             kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
             annotation=Annotated[field.annotation, typer.Argument()],
             default=default,
         ))
 
-    if cmd.Config is not None:
-        for fname, field in cmd.Config.model_fields.items():
-            params.append(inspect.Parameter(
+    if params_cls is not None:
+        for fname, field in params_cls.model_fields.items():
+            sig_params.append(inspect.Parameter(
                 fname,
                 kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 annotation=Annotated[field.annotation, typer.Option(help=field.description or "")],
-                default=getattr(cmd.config, fname),
+                default=getattr(default_params, fname),
             ))
 
     def wrapper(**kwargs):
         input_data = cmd.Input(**{k: v for k, v in kwargs.items() if k in input_fields})
-        config_data = None
-        if cmd.Config is not None:
-            config_data = cmd.config.model_copy(
-                update={k: v for k, v in kwargs.items() if k in config_fields}
-            )
+        params_data = params_cls(**{k: v for k, v in kwargs.items() if k in param_fields}) if params_cls else None
         try:
-            result = cmd.run(input_data, config_data)
+            result = cmd.run(input_data, params_data)
         except Exception as e:
             typer.echo(f"Error: {cmd.name} failed: {e}", err=True)
             raise typer.Exit(1)
         print(result)
 
-    wrapper.__signature__ = inspect.Signature(params)
+    wrapper.__signature__ = inspect.Signature(sig_params)
     wrapper.__doc__ = cmd.operation.__doc__
     return wrapper
 
