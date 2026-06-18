@@ -7,13 +7,13 @@ Generate a concise description of the supplied text.
 **CLI**
 
 ```
-taggly desc "Language models are transforming how we interact with text and data." --model gemma-1b
+taggly desc "Language models are transforming how we interact with text and data."
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/desc?model=gemma-1b" \
+curl -X POST "http://localhost:8000/desc" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -29,12 +29,7 @@ Usage: taggly desc [OPTIONS] CONTENT
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --model             TEXT     Generative model: 'gemma-1b', 'gemma-4b', or   │
-│                              'gemma-12b'                                    │
-│                              [default: gemma-1b]                            │
-│ --max-tokens        INTEGER  Maximum number of tokens to generate           │
-│                              [default: 128]                                 │
-│ --help                       Show this message and exit.                    │
+│ --help          Show this message and exit.                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -50,8 +45,6 @@ Usage: taggly desc [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `model`, `max_tokens`
-
 **Response**
 
 ```json
@@ -64,17 +57,17 @@ Usage: taggly desc [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `content` | string | yes | — | — |
+| `content` | string | yes | — | A text string to generate a description from. |
 
 ## Output
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `description` | string | yes | — | — |
+| `description` | string | yes | — | The generated description. |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `model` | string | no | gemma-1b | Generative model: 'gemma-1b', 'gemma-4b', or 'gemma-12b' |
+| `model` | string | no | gemma-2b | Generative model: 'gemma-2b', 'gemma-4b', or 'gemma-12b' |
 | `max_tokens` | integer | no | 128 | Maximum number of tokens to generate |

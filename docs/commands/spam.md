@@ -29,7 +29,8 @@ Usage: taggly spam [OPTIONS] CONTENT
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --threshold        FLOAT  The spam score threshold to assign a 'spam' label │
+│ --threshold        FLOAT  Spam probability threshold for assigning a 'spam' │
+│                           label                                             │
 │                           [default: 0.5]                                    │
 │ --help                    Show this message and exit.                       │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -47,7 +48,7 @@ Usage: taggly spam [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `threshold`
+**Query parameters**: `threshold`
 
 **Response**
 
@@ -64,17 +65,17 @@ Usage: taggly spam [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `content` | string | yes | — | — |
+| `content` | string | yes | — | A text string to score for spam. |
 
 ## Output
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tags` | array[string] | yes | — | — |
-| `score` | number | yes | — | — |
+| `tags` | array[string] | yes | — | Label list — contains 'spam' if the threshold is exceeded. |
+| `score` | number | yes | — | Spam probability score from 0 to 1. |
 
-## Config
+## Params
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `threshold` | number | no | 0.5 | The spam score threshold to assign a 'spam' label |
+| `threshold` | number | no | 0.5 | Spam probability threshold for assigning a 'spam' label |

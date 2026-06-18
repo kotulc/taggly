@@ -7,13 +7,13 @@ Rank candidates by relevance to the query while maximizing diversity.
 **CLI**
 
 ```
-taggly rank "Language models are transforming how we interact with text and data." ['...'] --model all-minilm
+taggly rank "Language models are transforming how we interact with text and data." ['...'] --top-n 3
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/rank?model=all-minilm" \
+curl -X POST "http://localhost:8000/rank?top_n=3" \
   -H "Content-Type: application/json" \
   -d '{"query": "Language models are transforming how we interact with text and data.", "candidates": ["..."]}'
 ```
@@ -30,10 +30,7 @@ Usage: taggly rank [OPTIONS] QUERY CANDIDATES...
 │ *    candidates      CANDIDATES...  [required]                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --model            TEXT     Embedding model: 'all-minilm', 'bge-base', or   │
-│                             'bge-large'                                     │
-│                             [default: all-minilm]                           │
-│ --top-n            INTEGER  Number of candidates to return [default: 10]    │
+│ --top-n            INTEGER  Number of candidates to return [default: 3]     │
 │ --diversity        FLOAT    MMR diversity weight (0=pure relevance, 1=pure  │
 │                             diversity)                                      │
 │                             [default: 0.5]                                  │
@@ -56,7 +53,7 @@ Usage: taggly rank [OPTIONS] QUERY CANDIDATES...
 }
 ```
 
-**Query parameters** (override config defaults): `model`, `top_n`, `diversity`
+**Query parameters**: `top_n`, `diversity`
 
 **Response**
 
@@ -72,19 +69,24 @@ Usage: taggly rank [OPTIONS] QUERY CANDIDATES...
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | yes | — | — |
-| `candidates` | array[string] | yes | — | — |
+| `query` | string | yes | — | The reference text to rank candidates against. |
+| `candidates` | array[string] | yes | — | A list of candidate strings to rank by relevance. |
 
 ## Output
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `ranked` | array[string] | yes | — | — |
+| `ranked` | array[string] | yes | — | The list of strings ranked with MMR. |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `model` | string | no | all-minilm | Embedding model: 'all-minilm', 'bge-base', or 'bge-large' |
-| `top_n` | integer | no | 10 | Number of candidates to return |
+
+## Params
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `top_n` | integer | no | 3 | Number of candidates to return |
 | `diversity` | number | no | 0.5 | MMR diversity weight (0=pure relevance, 1=pure diversity) |

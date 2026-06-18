@@ -62,9 +62,9 @@ def discover_commands(commands_dir: Path=None, app_config=None) -> Dict[str, Abs
 
 
 def _load_config() -> dict:
-    """Load per-command Config defaults from config.yaml in the working directory."""
+    """Load per-command Config defaults from config/config.yaml in the working directory."""
     import yaml
-    path = Path("config.yaml")
+    path = Path("config") / "config.yaml"
     if not path.exists():
         return {}
     with path.open() as f:

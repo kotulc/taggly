@@ -1,0 +1,35 @@
+# taggly system configuration
+# Values here override built-in command defaults at startup.
+# Only Config fields are supported (system-level settings).
+# Per-call options are set via CLI flags or API query params.
+
+keys:
+  model: keybert           # 'yake' or 'keybert'
+  language: en
+  dedup_lim: 0.9
+  dedup_func: seqm         # 'seqm', 'jaro', or 'levs'
+  stop_words: english
+  use_mmr: false
+
+ents:
+  language: en_core_web_lg  # any installed spaCy model name
+
+polar:
+  model: vader             # 'vader' or 'blob'
+
+score:
+  model: all-minilm        # 'all-minilm', 'bge-base', or 'bge-large'
+
+rank:
+  model: all-minilm
+
+topics:
+  model: all-minilm
+
+desc:
+  model: gemma-2b          # 'gemma-2b', 'gemma-4b', or 'gemma-12b'
+  max_tokens: 128
+
+ext:
+  model: gemma-2b
+  max_tokens: 256

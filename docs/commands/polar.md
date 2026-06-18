@@ -7,13 +7,13 @@ Compute positive/neutral/negative polarity for the supplied text.
 **CLI**
 
 ```
-taggly polar "Language models are transforming how we interact with text and data." --model vader
+taggly polar "Language models are transforming how we interact with text and data."
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/polar?model=vader" \
+curl -X POST "http://localhost:8000/polar" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -29,9 +29,7 @@ Usage: taggly polar [OPTIONS] CONTENT
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --model        TEXT  Sentiment analysis model to use: 'vader' or 'blob'     │
-│                      [default: vader]                                       │
-│ --help               Show this message and exit.                            │
+│ --help          Show this message and exit.                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,8 +44,6 @@ Usage: taggly polar [OPTIONS] CONTENT
   "content": "..."
 }
 ```
-
-**Query parameters** (override config defaults): `model`
 
 **Response**
 
@@ -64,17 +60,17 @@ Usage: taggly polar [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `content` | string | yes | — | — |
+| `content` | string | yes | — | A text string to compute polarity sentiment for. |
 
 ## Output
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tags` | array[string] | yes | — | — |
-| `scores` | dict[str, number] | yes | — | — |
+| `tags` | array[string] | yes | — | The dominant polarity label(s): 'positive', 'neutral', or 'negative'. |
+| `scores` | dict[str, number] | yes | — | Polarity scores keyed by label. |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `model` | string | no | vader | Sentiment analysis model to use: 'vader' or 'blob' |
+| `model` | string | no | vader | Sentiment model: 'vader' or 'blob' |

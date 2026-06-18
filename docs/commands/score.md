@@ -7,13 +7,13 @@ Score each candidate's semantic similarity to the query.
 **CLI**
 
 ```
-taggly score "Language models are transforming how we interact with text and data." ['...'] --model all-minilm
+taggly score "Language models are transforming how we interact with text and data." ['...']
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/score?model=all-minilm" \
+curl -X POST "http://localhost:8000/score" \
   -H "Content-Type: application/json" \
   -d '{"query": "Language models are transforming how we interact with text and data.", "candidates": ["..."]}'
 ```
@@ -30,12 +30,7 @@ Usage: taggly score [OPTIONS] QUERY CANDIDATES...
 │ *    candidates      CANDIDATES...  [required]                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --model         TEXT  Embedding model: 'all-minilm', 'bge-base', or         │
-│                       'bge-large'                                           │
-│                       [default: all-minilm]                                 │
-│ --metric        TEXT  Similarity metric: 'cosine' or 'dot'                  │
-│                       [default: cosine]                                     │
-│ --help                Show this message and exit.                           │
+│ --help          Show this message and exit.                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,8 +49,6 @@ Usage: taggly score [OPTIONS] QUERY CANDIDATES...
 }
 ```
 
-**Query parameters** (override config defaults): `model`, `metric`
-
 **Response**
 
 ```json
@@ -70,18 +63,17 @@ Usage: taggly score [OPTIONS] QUERY CANDIDATES...
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | yes | — | — |
-| `candidates` | array[string] | yes | — | — |
+| `query` | string | yes | — | The reference text to compare candidates against. |
+| `candidates` | array[string] | yes | — | A list of candidate strings to score. |
 
 ## Output
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `scores` | array[number] | yes | — | — |
+| `scores` | array[number] | yes | — | Cosine similarity scores in the same order as candidates. |
 
 ## Config
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `model` | string | no | all-minilm | Embedding model: 'all-minilm', 'bge-base', or 'bge-large' |
-| `metric` | string | no | cosine | Similarity metric: 'cosine' or 'dot' |

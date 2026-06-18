@@ -29,8 +29,8 @@ Usage: taggly tox [OPTIONS] CONTENT
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --threshold        FLOAT  The toxicity score threshold to assign a 'toxic'  │
-│                           label                                             │
+│ --threshold        FLOAT  Toxicity probability threshold for assigning a    │
+│                           'toxic' label                                     │
 │                           [default: 0.5]                                    │
 │ --help                    Show this message and exit.                       │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -48,7 +48,7 @@ Usage: taggly tox [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `threshold`
+**Query parameters**: `threshold`
 
 **Response**
 
@@ -65,17 +65,17 @@ Usage: taggly tox [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `content` | string | yes | — | — |
+| `content` | string | yes | — | A text string to score for toxicity. |
 
 ## Output
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tags` | array[string] | yes | — | — |
-| `score` | number | yes | — | — |
+| `tags` | array[string] | yes | — | Label list — contains 'toxic' if the threshold is exceeded. |
+| `score` | number | yes | — | Toxicity probability score from 0 to 1. |
 
-## Config
+## Params
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `threshold` | number | no | 0.5 | The toxicity score threshold to assign a 'toxic' label |
+| `threshold` | number | no | 0.5 | Toxicity probability threshold for assigning a 'toxic' label |

@@ -1,7 +1,0 @@
-ext:
-  model: "gemma-2b"
-  max_tokens: 256
-
-desc:
-  model: "gemma-2b"
-  max_tokens: 128

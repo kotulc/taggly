@@ -7,13 +7,13 @@ Extract typed concepts from the supplied text as a JSON object.
 **CLI**
 
 ```
-taggly ext "Language models are transforming how we interact with text and data." --model gemma-1b
+taggly ext "Language models are transforming how we interact with text and data." --concepts concepts,entities,topics
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/ext?model=gemma-1b" \
+curl -X POST "http://localhost:8000/ext?concepts=concepts,entities,topics" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -29,14 +29,9 @@ Usage: taggly ext [OPTIONS] CONTENT
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --model             TEXT     Generative model: 'gemma-1b', 'gemma-4b', or   │
-│                              'gemma-12b'                                    │
-│                              [default: gemma-1b]                            │
-│ --concepts          TEXT     Concept categories to extract                  │
-│                              [default: entities, topics, relations]         │
-│ --max-tokens        INTEGER  Maximum number of tokens to generate           │
-│                              [default: 256]                                 │
-│ --help                       Show this message and exit.                    │
+│ --concepts        TEXT  Comma-separated concept categories to extract       │
+│                         [default: concepts,entities,topics]                 │
+│ --help                  Show this message and exit.                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -52,7 +47,7 @@ Usage: taggly ext [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters** (override config defaults): `model`, `concepts`, `max_tokens`
+**Query parameters**: `concepts`
 
 **Response**
 
@@ -66,7 +61,7 @@ Usage: taggly ext [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `content` | string | yes | — | — |
+| `content` | string | yes | — | A text string to extract concepts from |
 
 ## Output
 
@@ -78,6 +73,11 @@ Usage: taggly ext [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `model` | string | no | gemma-1b | Generative model: 'gemma-1b', 'gemma-4b', or 'gemma-12b' |
-| `concepts` | array[string] | no | ['entities', 'topics', 'relations'] | Concept categories to extract |
+| `model` | string | no | gemma-2b | Generative model: 'gemma-2b', 'gemma-4b', or 'gemma-12b' |
 | `max_tokens` | integer | no | 256 | Maximum number of tokens to generate |
+
+## Params
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `concepts` | string | no | concepts,entities,topics | Comma-separated concept categories to extract |
