@@ -21,7 +21,7 @@ class ExtConfig(BaseModel):
 
 
 class ExtParams(BaseModel):
-    concepts: str = Field("concepts,entities,topics", description="Comma-separated concept categories to extract")
+    concepts: str = Field("concepts, entities, topics", description="Comma-separated concept categories to extract (spaces around commas are fine)")
 
 
 class ExtInput(BaseModel):
