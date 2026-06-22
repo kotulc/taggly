@@ -1,9 +1,10 @@
-"""polar command: Positive/neutral/negative polarity sentiment analysis."""
+"""polar command: Return positive/neutral/negative polarity sentiment analysis tags."""
 
 from pydantic import BaseModel, Field
 
 from taggly.models.base import AbstractBaseCommand
 
+# Convert vader class labels to human readable form
 VADER_MAP = {'neg': 'negative', 'neu': 'neutral', 'pos': 'positive'}
 
 

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from taggly.loaders import load_generator
 from taggly.models.base import AbstractBaseCommand
 
+# Model query prompt template
 PROMPT = "Describe the following text in a single short sentence:\n\n{}"
 
 
