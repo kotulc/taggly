@@ -46,36 +46,46 @@ def _cmd():
     return cmd
 
 
-def test_tags_combines_keywords_and_entities():
-    """tags merges keywords, entities, and concepts into a single deduplicated list."""
+def test_tags_returns_typed_groups():
+    """tags output contains typed groups: keywords, entities, topics, and scored."""
     result = _cmd().operation(TagsInput(content=_SAMPLE))
-    assert "machine learning" in result.tags
-    assert "Python" in result.tags
+    assert "keywords" in result.tags
+    assert "entities" in result.tags
+    assert "topics" in result.tags
+    assert "scored" in result.tags
 
 
-def test_tags_deduplicates():
-    """Overlapping results from sub-commands appear only once."""
+def test_tags_keywords_populated():
+    """keywords group is populated from the keys command."""
+    result = _cmd().operation(TagsInput(content=_SAMPLE))
+    assert "machine learning" in result.tags["keywords"]
+
+
+def test_tags_entities_merged():
+    """entities from ents and ext are merged and deduplicated."""
+    result = _cmd().operation(TagsInput(content=_SAMPLE))
+    entities = result.tags["entities"]
+    assert "Python" in entities
+    assert entities.count("Python") == 1  # deduplicated
+
+
+def test_tags_scored_is_combined_sorted_list():
+    """scored contains all unique tags sorted by relevance score."""
     result = _cmd().operation(TagsInput(content=_SAMPLE), TagsParams(top_n=20))
-    assert len(result.tags) == len(set(result.tags))
+    assert isinstance(result.tags["scored"], list)
+    assert len(result.tags["scored"]) > 0
+    assert "ranked" not in result.tags
 
 
-def test_tags_respects_top_n():
-    """tags returns at most top_n tags."""
+def test_tags_rank_produces_ranked_not_scored():
+    """rank=True produces a 'ranked' key via MMR, not 'scored'."""
+    result = _cmd().operation(TagsInput(content=_SAMPLE), TagsParams(top_n=3, rank=True))
+    assert "ranked" in result.tags
+    assert "scored" not in result.tags
+    assert len(result.tags["ranked"]) <= 3
+
+
+def test_tags_top_n_limits_scored():
+    """top_n caps the combined scored list."""
     result = _cmd().operation(TagsInput(content=_SAMPLE), TagsParams(top_n=2))
-    assert len(result.tags) <= 2
-
-
-def test_tags_rank_delegates_to_rank_command():
-    """rank=True delegates to the rank command's MMR operation."""
-    result = _cmd().operation(TagsInput(content=_SAMPLE), TagsParams(top_n=2, rank=True))
-    assert len(result.tags) <= 2
-    assert all(isinstance(t, str) for t in result.tags)
-
-
-def test_tags_default_sorts_by_score():
-    """Without rank=True, tags are ordered by similarity score descending."""
-    result = _cmd().operation(TagsInput(content=_SAMPLE), TagsParams(top_n=20))
-    assert isinstance(result.tags, list)
-    assert len(result.tags) > 0
-
-
+    assert len(result.tags["scored"]) <= 2

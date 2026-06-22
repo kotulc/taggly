@@ -1,6 +1,6 @@
 """tags command: Extract a list of tags from the supplied text sorted by relevance."""
 
-from typing import List
+from typing import Dict, List
 from pydantic import BaseModel, Field
 
 from taggly.commands.ents import EntsCommand, EntsInput, EntsParams
@@ -13,7 +13,7 @@ from taggly.models.base import AbstractBaseCommand
 
 class TagsParams(BaseModel):
     max_ngram: int = Field(2, description="Maximum candidate tag word length")
-    top_n: int = Field(10, description="Maximum number of tags to return")
+    top_n: int = Field(10, description="Maximum number of tags to return per type")
     rank: bool = Field(False, description="Rank candidates by MMR for relevance and diversity")
 
 
@@ -22,7 +22,9 @@ class TagsInput(BaseModel):
 
 
 class TagsOutput(BaseModel):
-    tags: List[str] = Field(..., description="Extracted tags in ranked order")
+    tags: Dict[str, List[str]] = Field(
+        ..., description="Typed tag groups from each source plus a combined 'scored' or 'ranked' list"
+    )
 
 
 class TagsCommand(AbstractBaseCommand):
@@ -40,37 +42,30 @@ class TagsCommand(AbstractBaseCommand):
         self._score = ScoreCommand()
 
     def operation(self, data: TagsInput, params: TagsParams=None) -> TagsOutput:
-        """Extract a unified ranked list of tags combining keywords and named entities."""
+        """Extract typed tag groups and a combined relevance-sorted list."""
         p = params or TagsParams()
 
-        # Extract candidate tags from each command class
-        candidates = self._keys.operation(
-            KeysInput(content=data.content), 
-            KeysParams(top_n=p.top_n * 2, ngram_max=p.max_ngram)
+        # Start with ext concepts dict (entities, topics, concepts, …)
+        output: Dict[str, List[str]] = dict(self._ext.operation(ExtInput(content=data.content)).concepts)
+
+        # Merge ents named entities into the entities group, deduplicated
+        ents = self._ents.operation(EntsInput(content=data.content), EntsParams(top_n=p.top_n)).entities
+        output["entities"] = list(dict.fromkeys(output.get("entities", []) + ents))
+
+        # Add keyword group
+        output["keywords"] = self._keys.operation(
+            KeysInput(content=data.content), KeysParams(top_n=p.top_n, ngram_max=p.max_ngram)
         ).keywords
 
-        candidates += self._ents.operation(
-            EntsInput(content=data.content), 
-            EntsParams(top_n=p.top_n * 2)
-        ).entities
+        # Combine all unique values for scoring or ranking
+        all_tags = list(dict.fromkeys(v for vals in output.values() for v in vals))
 
-        concepts = self._ext.operation(ExtInput(content=data.content)).concepts
-        for concept_list in concepts.values():
-            candidates.extend(concept_list)
+        if p.rank and all_tags:
+            output["ranked"] = self._rank.operation(
+                RankInput(query=data.content, candidates=all_tags), RankParams(top_n=p.top_n)
+            ).ranked
+        elif all_tags:
+            scores = self._score.operation(ScoreInput(query=data.content, candidates=all_tags)).scores
+            output["scored"] = [t for _, t in sorted(zip(scores, all_tags), reverse=True)][:p.top_n]
 
-        # Filter candidates to unique results only
-        candidates = list(set(candidates))
-
-        # Optionally rank candidates via MMR
-        if p.rank and candidates:
-            return TagsOutput(tags=self._rank.operation(
-                RankInput(query=data.content, candidates=candidates),
-                RankParams(top_n=p.top_n),
-            ).ranked)
-        else:
-            scores = self._score.operation(
-                ScoreInput(query=data.content, candidates=candidates)
-            ).scores
-            return TagsOutput(
-                tags=[t for _, t in sorted(zip(scores, candidates), reverse=True)][:p.top_n]
-            )
+        return TagsOutput(tags=output)
