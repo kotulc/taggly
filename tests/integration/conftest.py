@@ -36,6 +36,12 @@ class _FakeGenerator:
         return [{"generated_text": text}]
 
 
+class _FakeKeyBERT:
+    """Stub KeyBERT — avoids loading sentence-transformers through the keybert side door."""
+    def extract_keywords(self, content, top_n=5, **kwargs):
+        return [("stub", 0.5)] * min(top_n, 1)
+
+
 _embedder_cache: dict = {}
 _generator_cache: dict = {}
 
@@ -68,3 +74,10 @@ def stub_loaders(monkeypatch):
 
     from taggly.commands.topics import TopicsCommand
     monkeypatch.setattr(TopicsCommand, "_topics", _fake_topics)
+
+    # keybert.KeyBERT loads sentence-transformers internally, bypassing load_embedder
+    try:
+        import keybert
+        monkeypatch.setattr(keybert, "KeyBERT", lambda *a, **kw: _FakeKeyBERT())
+    except ImportError:
+        pass

@@ -6,80 +6,101 @@ that single definition — with no wiring, registration, or boilerplate in betwe
 
 ## One definition, three surfaces
 
-Every capability is a single `AbstractBaseCommand` subclass declaring four things:
+Every capability is a single `AbstractBaseCommand` subclass declaring up to six things:
 
 | Member | Purpose |
 |--------|---------|
 | `name` | The command/endpoint identifier |
-| `Input` | A Pydantic model of the request payload |
-| `Output` | A Pydantic model of the result |
-| `Config` | A Pydantic model of tunable options (optional) |
+| `Input` | Pydantic model of the request payload (positional CLI args, API request body) |
+| `Output` | Pydantic model of the result |
+| `Config` | Pydantic model of **system-level** settings — loaded once from `config/config.yaml` |
+| `Params` | Pydantic model of **per-call** options — CLI `--flags` and API `?query_params` |
+| `warmup()` | Optional: pre-load heavy models at server startup |
 
-From those models the framework derives, automatically:
+From those declarations the framework derives, automatically:
 
-- a **CLI sub-command** — `Input` fields become positional arguments, `Config` fields become `--flags`
-- an **API endpoint** — `POST /{name}` with `Input` as the JSON body and `Config` fields as query parameters
-- **reference docs** — schemas, help text, and examples generated from the models and docstrings
+- a **CLI sub-command** — `Input` fields → positional arguments, `Params` fields → `--flags`
+- an **API endpoint** — `POST /{name}` with `Input` as the JSON body, `Params` as query params
+- **reference docs** — schemas, examples, and help text generated from the models and docstrings
 
-Adding a `.py` file to `src/taggly/commands/` is the *entire* registration step. Discovery
-walks the directory, finds every `AbstractBaseCommand` subclass, and exposes it everywhere.
+Adding a `.py` file to `src/taggly/commands/` is the *entire* registration step.
+
+## Config vs Params
+
+The split between `Config` and `Params` keeps deployment-time decisions separate from
+request-time decisions:
+
+| | `Config` | `Params` |
+|--|----------|----------|
+| **Set by** | `config/config.yaml` at deploy time | CLI flag or API query param per request |
+| **Exposed as** | Not exposed to callers | `--flag` (CLI) / `?param=` (API) |
+| **Typical fields** | Which model to load, language, generation limits | How many results, thresholds, filters |
+| **Example** | `model: "gemma-4b"`, `language: "en"` | `top_n: 5`, `threshold: 0.8` |
+
+Config fields are system-level decisions a deployment makes once. Params are per-call
+options the user can override every request without restarting anything.
+
+Commands that need neither declare neither — `spam` and `tox` have only `Params`, `score`
+and `desc` have only `Config`, and commands like `keys` have both.
 
 ## Convention over configuration
 
 The Pydantic models *are* the contract. Field types drive CLI argument parsing, API
-validation, and documentation alike, so the schema never drifts from the three surfaces.
-A field's `description` is its CLI help, its API doc, and its docs-table entry — written once.
+validation, and documentation alike — the schema never drifts from the three surfaces.
+A field's `description` is its CLI help text, its API doc, and its docs-table entry —
+written once.
 
 This is why **types matter more than logic**: when a value doesn't fit the CLI/API surface,
-change the field type rather than adding special-case handling to the framework. The framework
-stays small; the commands stay declarative.
+change the field type rather than adding special-case handling to the framework.
 
 ## Lazy by default, fast when it counts
 
-NLP models are expensive to load. Taggly keeps the framework cheap to import by deferring
-every heavy dependency (`transformers`, `sentence-transformers`, `bertopic`, `spacy`, …) to
-inside the method that needs it. Command discovery, CLI help, and docs generation never touch
-a model.
+NLP models are expensive to load. Taggly keeps startup cheap by deferring every heavy
+import to inside the method that first needs it. Command discovery, CLI help, and docs
+generation never touch a model.
 
 - **`warmup()`** lets a command pre-load its model so the first real request isn't slow.
-- Shared models live in [`loaders.py`](../src/taggly/loaders.py) behind cached loaders, so
-  `score`, `rank`, and `topics` reuse one embedding model instance rather than each loading
-  their own.
+- Shared models live in [`loaders.py`](../src/taggly/loaders.py) behind `@lru_cache`, so
+  `score`, `rank`, `topics`, and `tags` all share one embedding model instance.
 
-## Per-call configuration with a clear priority
+## Per-call options with a clear priority
 
-Config is resolved fresh on every call, never baked into a cached model. The priority chain is:
+Config and Params have separate priority chains:
 
 ```
-CLI --flag  /  API ?query_param   >   COMMANDS env var   >   Config field default
+System:   config/config.yaml  >  Config field default
+Per-call: CLI --flag / API ?query_param  >  Params field default
 ```
 
-The cached object is only the heavy model; all tunables flow through the effective `Config`
-for that single invocation. The same request can ask for a different model or threshold each
-time without reloading anything it doesn't have to.
+Config is loaded once at startup and never changes within a session. Params are resolved
+fresh on every call from the CLI flag or query param, falling back to the class default.
 
 ## Run anywhere, delegate automatically
 
-The same registry powers both modes with no extra logic:
+The same registry powers both modes:
 
 - **CLI mode** — run a command directly; the model loads locally.
 - **API mode** — `taggly start` runs the server; commands become endpoints.
 
-When a server is already running, the CLI **delegates** to it instead of loading models
-locally, then falls back silently to local execution if the server is unreachable. One
-codebase, two deployment shapes, zero duplicated handling.
+When a server is already running, the CLI delegates to it instead of loading models locally,
+then falls back silently if the server is unreachable. One codebase, two deployment shapes,
+zero duplicated handling.
 
 ## Composability
 
-Commands are deliberately small and single-purpose so they compose into pipelines. This is
-what lets downstream projects (e.g. [graphly](https://github.com/kotulc/graphly)) build a
-document knowledge graph by chaining taggly primitives:
+Commands are small, single-purpose, and compose into pipelines. The `tags` command is
+an example orchestrator: it calls `keys`, `ents`, `ext`, `score`, and `rank` as first-class
+objects — no special wiring, just method calls on the same command instances:
 
-- `keys` / `ents` / `ext` — extract candidate tags and typed concepts
-- `score` — measure semantic similarity for clustering and node weighting
-- `rank` — select diverse, representative members per cluster via MMR
-- `topics` / `desc` — summarize clusters and the document as a whole
+```python
+class TagsCommand(AbstractBaseCommand):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._keys = KeysCommand(config=KeysConfig(model="yake"))
+        self._ents = EntsCommand()
+        self._rank = RankCommand()
+```
 
-Each command does one thing, exposes it identically across CLI and API, and stays out of the
-way of the next one in the chain. That is the whole framework: **minimal core, declarative
-commands, three surfaces for free.**
+Each command does one thing, exposes it identically across CLI and API, and stays out of
+the way of the next one. That is the whole framework: **minimal core, declarative commands,
+three surfaces for free.**

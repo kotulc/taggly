@@ -1,14 +1,14 @@
 # taggly
 
-Taggly is a hyper extensible CLI-first config-driven NLP based tag extraction utility and application framework.
-
-The intelligent application framework facilitates quickly adding and removing commands without any additional wiring or registration beyond simply implementing the `AbstractBaseCommand` class.
+Taggly is a hyper extensible CLI-first NLP command framework. Add a command by implementing
+one class — it is automatically registered as a CLI sub-command, an API endpoint, and a docs
+page with no additional wiring.
 
 ### Features
 - Auto command registration and docs generation
 - Commands are automatically included as endpoints in the API
-- Commands check for their active endpoints or fallback to local operations
-- The application can be run in both CLI or API mode with 0 additional logic
+- Commands check for their active API server or fall back to local operation
+- CLI and API mode with zero additional logic per command
 
 
 ## Installation
@@ -19,21 +19,24 @@ pip install -e .
 
 ## Commands
 
-| Command | Description | Config options |
-|---------|-------------|----------------|
-| `keys`   | Keyword extraction | `model`, `top_n`, `ngram_max`, `language`, `dedup_lim`, `dedup_func`, `stop_words`, `use_mmr` |
-| `ents`   | Named entity extraction | `top_n`, `language` |
-| `polar`  | Polarity sentiment analysis | `model` |
-| `spam`   | Spam detection scoring | `threshold` |
-| `tox`    | Toxicity scoring | `threshold` |
-| `desc`   | Text description via a language model | `model`, `max_tokens` |
-| `ext`    | Typed concept extraction via a language model | `model`, `concepts`, `max_tokens` |
-| `score`  | Semantic similarity scores (cosine) | `model` |
-| `rank`   | Maximal Marginal Relevance ranking | `model`, `top_n`, `diversity` |
-| `topics` | Topic discovery via BERTopic | `model`, `top_n` |
+Commands separate **Config** (system-level, set at deploy time via `config/config.yaml`) from
+**Params** (per-call, passed as CLI flags or API query params).
+
+| Command | Description | Config (system) | Params (per-call) |
+|---------|-------------|-----------------|-------------------|
+| `keys`   | Keyword extraction | `model`, `language`, `dedup_*`, `stop_words`, `use_mmr` | `top_n`, `ngram_max` |
+| `ents`   | Named entity extraction | `language` | `top_n` |
+| `polar`  | Polarity sentiment analysis | `model` | — |
+| `spam`   | Spam detection scoring | — | `threshold` |
+| `tox`    | Toxicity scoring | — | `threshold` |
+| `desc`   | Text description via a language model | `model`, `max_tokens` | — |
+| `ext`    | Typed concept extraction via a language model | `model`, `max_tokens` | `concepts` |
+| `score`  | Semantic similarity scores (cosine) | `model` | — |
+| `rank`   | Maximal Marginal Relevance ranking | `model` | `top_n`, `diversity` |
+| `topics` | Topic discovery via BERTopic | `model` | `top_n` |
 
 Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
-`bge-base`, `bge-large`. Generative commands (`desc`, `ext`) share Gemma models —
+`bge-base`, `bge-large`. Generative commands (`desc`, `ext`) use Gemma models —
 `gemma-2b`, `gemma-4b`, `gemma-12b`.
 
 Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
@@ -48,7 +51,7 @@ taggly keys --help
 taggly keys "natural language processing is a subfield of AI"
 # {"keywords": ["natural language processing", "subfield", "AI"]}
 
-taggly keys "natural language processing" --model yake --top-n 5
+taggly keys "natural language processing" --top-n 5
 # {"keywords": [...]}
 
 taggly polar "I love this product!"
@@ -60,11 +63,11 @@ taggly tox "You are amazing!"
 taggly score "machine learning" --candidates '["deep learning", "cooking", "neural networks"]'
 # {"scores": [0.85, 0.12, 0.79]}
 
-taggly ext "Python was created by Guido van Rossum at CWI in the Netherlands."
-# {"concepts": {"concepts": [...], "entities": ["Guido van Rossum", "CWI", "Netherlands"], "topics": ["Python"]}}
+taggly ext "Python was created by Guido van Rossum at CWI."
+# {"concepts": {"entities": ["Guido van Rossum", "CWI"], "topics": ["Python"], ...}}
 
-taggly topics "Language models are changing AI." "BERT and GPT are key examples." "Transformers power modern NLP."
-# {"topics": ["language", "models", "transformers"]}
+taggly topics "Language models are changing AI." "BERT and GPT are key examples."
+# {"topics": ["language", "models", "bert"]}
 ```
 
 ## Running as API
@@ -84,15 +87,16 @@ curl -X POST http://127.0.0.1:8000/keys \
   -d '{"content": "natural language processing is a subfield of AI"}'
 # {"keywords": ["natural language processing", "subfield", "AI"]}
 
-# Override config per-request via query params:
-curl -X POST "http://127.0.0.1:8000/keys?model=yake&top_n=5" \
+# Override Params per-request via query params:
+curl -X POST "http://127.0.0.1:8000/keys?top_n=5" \
   -H "Content-Type: application/json" \
   -d '{"content": "natural language processing is a subfield of AI"}'
 ```
 
 ## API delegation
 
-When a taggly API server is already running, CLI commands automatically delegate to it instead of loading models locally. This avoids slow initialization on every CLI invocation.
+When a taggly API server is already running, CLI commands automatically delegate to it instead
+of loading models locally. This avoids slow initialization on every CLI invocation.
 
 ```bash
 # Terminal 1 — start the API
@@ -102,7 +106,7 @@ taggly start
 taggly keys "natural language processing"  # → [keys] api
 ```
 
-The CLI prints `[command] api` or `[command] local` to stderr so you can always see which path was taken.
+The CLI prints `[command] api` to stderr when a request is handled by the API server.
 
 ## Model warmup
 
@@ -111,13 +115,14 @@ startup so the first request is fast:
 
 ```bash
 # .env
-WARMUP='["keys", "ents"]'
+WARMUP='["keys", "ext", "score"]'
 ```
 
 ```bash
 taggly start
 # [keys] loading model...
-# [ents] loading model...
+# [ext] loading model...
+# [score] loading model...
 # All models loaded.
 # Starting API server → http://127.0.0.1:8000  (Ctrl+C to stop)
 ```
@@ -139,22 +144,14 @@ echo 'HF_TOKEN=hf_xxx' >> .env
 hf auth login
 ```
 
-If a model is unavailable (missing token, unaccepted license, or bad identifier), taggly
-reports it clearly instead of dumping a traceback:
+If a model is unavailable, taggly reports it clearly:
 
-- **API startup** runs a preflight probe that loads every `WARMUP` model. If any fail, it
-  prints the offending commands and aborts with exit code 1 — the server will not start in a
-  half-broken state.
-- **API requests** return `503` with a `{"detail": "<command> unavailable: ..."}` message.
-- **CLI** prints `Error: <command> failed: ...` and exits with code 1.
-
-Only the commands listed in `WARMUP` are probed at startup, so set it to the models a given
-deployment actually requires.
+- **API startup** — preflight probe loads every `WARMUP` model; aborts with exit code 1 if
+  any fail so the server never starts in a half-broken state.
+- **API requests** — return `503` with `{"detail": "<command> unavailable: ..."}`.
+- **CLI** — prints `Error: <command> failed: ...` and exits with code 1.
 
 ## Generating docs
-
-The built-in `docs` command writes a markdown reference file to `docs/commands/` for every
-registered command, plus a `home.md` copied from this README:
 
 ```bash
 taggly docs
@@ -163,107 +160,106 @@ taggly docs
 
 ## Configuration
 
-Server settings are read from environment variables or a `.env` file in the project root.
+### Server settings (`.env`)
 
-| Variable   | Default     | Description                                    |
-|------------|-------------|------------------------------------------------|
-| `MODE`     | `cli`       | `cli` or `api`                                 |
-| `HOST`     | `127.0.0.1` | API server bind address                        |
-| `PORT`     | `8000`      | API server port                                |
-| `WARMUP`   | `[]`        | Command names to pre-load on API startup       |
-| `HF_TOKEN` | `""`        | HuggingFace token for downloading gated models |
+Read from environment variables or a `.env` file in the project root.
 
-### Per-command defaults (config.yaml)
+| Variable         | Default     | Description                                    |
+|------------------|-------------|------------------------------------------------|
+| `MODE`           | `cli`       | `cli` or `api`                                 |
+| `HOST`           | `127.0.0.1` | API server bind address                        |
+| `PORT`           | `8000`      | API server port                                |
+| `WARMUP`         | `[]`        | Command names to pre-load on API startup       |
+| `HF_TOKEN`       | `""`        | HuggingFace token for downloading gated models |
+| `API_TIMEOUT`    | `300.0`     | Read timeout for API delegation (seconds)      |
+| `CONNECT_TIMEOUT`| `2.0`       | Connect timeout; fast-fails if server is down  |
 
-Place a `config.yaml` in the project root to override default values for any command. Only
-include the settings you want to change:
+### System config (`config/config.yaml`)
+
+System-level **Config** defaults live in `config/config.yaml`. These are deployment-time
+settings (which model to use, language settings, generation limits) that do not vary per
+request. Edit `config/config.yaml` to change them without touching code:
 
 ```yaml
-# config.yaml
+# config/config.yaml
 keys:
-  top_n: 5
-  model: yake
+  model: yake          # switch from keybert to yake for all requests
 
 ext:
+  model: gemma-4b      # upgrade to a larger model
   max_tokens: 512
 
-topics:
-  top_n: 5
+score:
+  model: bge-large     # use a higher-quality embedding model
 ```
 
-### Configuration priority
+Only **Config** fields belong in `config/config.yaml`. Per-call options (**Params**) like
+`top_n`, `threshold`, and `concepts` are set per-request via CLI flags or API query params.
+
+### Priority chains
 
 ```
-CLI --flag / API ?query_param  >  config.yaml  >  Config field default
+Per-call:   CLI --flag  /  API ?query_param   →  Params field default
+System:     config/config.yaml                →  Config field default
 ```
 
 ```bash
-# 1. Config field default (top_n=10):
-taggly keys "natural language processing"
+# Params: top_n is per-call — CLI flag overrides the default
+taggly keys "machine learning" --top-n 3
 
-# 2. config.yaml overrides the default:
-#    keys: { top_n: 5 }  →  taggly keys "natural language processing"
-
-# 3. Per-call --flag always wins:
-taggly keys "natural language processing" --top-n 1
-```
-
-The same priority applies to the API via query params:
-
-```bash
-# config.yaml default (top_n: 5) is used unless overridden per-request:
-curl -X POST "http://127.0.0.1:8000/keys?top_n=1" \
-  -H "Content-Type: application/json" \
-  -d '{"content": "natural language processing"}'
+# Config: model is system-level — set in config/config.yaml, not per-call
+# config/config.yaml: keys: { model: yake }
+taggly keys "machine learning"  # uses yake as configured
 ```
 
 ## Extensions
 
-Taggly implements a modular command framework. Drop a module into `src/taggly/commands/` and it is automatically registered as both a CLI sub-command and an API endpoint — with no wiring required.
-
-The names `docs` and `start` are reserved for built-in CLI commands; a discovered command
-using one of those names is skipped with a warning.
-
-### Adding commands
-
-Create a `.py` file in `src/taggly/commands/` — it is auto-discovered on next run.
+Drop a `.py` file into `src/taggly/commands/` — it is auto-discovered as both a CLI
+sub-command and an API endpoint. The names `docs` and `start` are reserved.
 
 ```python
 from pydantic import BaseModel, Field
 from taggly.models.base import AbstractBaseCommand
 
 
+class GreetConfig(BaseModel):
+    style: str = Field("formal", description="Greeting style: 'formal' or 'casual'")
+
+
+class GreetParams(BaseModel):
+    greeting: str = Field("Hello", description="Word to use as the greeting")
+
+
 class GreetInput(BaseModel):
-    name: str
+    name: str = Field(..., description="Name to greet")
 
 
 class GreetOutput(BaseModel):
-    message: str
-
-
-class GreetConfig(BaseModel):
-    greeting: str = Field("Hello", description="Word to prepend to the name")
+    message: str = Field(..., description="The greeting message")
 
 
 class GreetCommand(AbstractBaseCommand):
     name = "greet"
+    Config = GreetConfig   # system-level: set in config/config.yaml
+    Params = GreetParams   # per-call: CLI flag or API query param
     Input = GreetInput
     Output = GreetOutput
-    Config = GreetConfig  # omit if the command needs no config
 
-    def operation(self, data: GreetInput, config: GreetConfig = None) -> GreetOutput:
+    def __init__(self, config: GreetConfig=None, **kwargs):
+        super().__init__(**kwargs)
+        self._config = config if config is not None else GreetConfig()
+
+    def operation(self, data: GreetInput, params: GreetParams=None) -> GreetOutput:
         """Greet someone by name."""
-        cfg = config or self.config or GreetConfig()
-        return GreetOutput(message=f"{cfg.greeting}, {data.name}!")
+        p = params or GreetParams()
+        return GreetOutput(message=f"{p.greeting}, {data.name}!")
 ```
 
-Commands with expensive initialization (large models) should override `warmup()`:
+Commands with expensive initialization should override `warmup()` using `self._config`:
 
 ```python
 def warmup(self) -> None:
-    if self._model is None:
-        import heavy_library
-        self._model = heavy_library.load(...)
+    load_my_model(self._config.model)
 ```
 
 ## Running tests
