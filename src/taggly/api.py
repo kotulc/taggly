@@ -54,8 +54,12 @@ def _add_endpoint(app, name, command):
 
 
 def _safe_run(command, data, params=None):
-    """Run a command, converting failures into a clean 503 response."""
+    """Run a command, mapping failures to appropriate HTTP error codes."""
     try:
         return command.run(data, params)
-    except Exception as e:
+    except (OSError, ImportError, MemoryError) as e:
+        # Model file missing, library not installed, or OOM — transient, retry may succeed
         raise HTTPException(status_code=503, detail=f"{command.name} unavailable: {e}")
+    except Exception as e:
+        # Unexpected error in command logic — not transient, retry won't help
+        raise HTTPException(status_code=500, detail=f"{command.name} failed: {e}")
