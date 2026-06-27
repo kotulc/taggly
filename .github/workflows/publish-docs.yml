@@ -3,15 +3,32 @@ name: Publish Docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'site.config.js']
+    paths: ['docs/**', 'mdsite.yaml']
   workflow_dispatch:
 
 jobs:
   publish:
-    uses: kotulc/mdsite/.github/workflows/deploy.yml@main
+    runs-on: ubuntu-latest
     permissions:
-      contents: write
-    with:
-      content_repo: kotulc/taggly
-      content_path: docs
-      base_path: /taggly
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build docs
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -e BASE_PATH=/taggly \
+            ghcr.io/kotulc/mdsite:latest
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
