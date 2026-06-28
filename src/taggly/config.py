@@ -13,3 +13,5 @@ class AppConfig(BaseSettings):
     hf_token: str = ""
     api_timeout: float = 300.0    # read/write/pool timeout for API delegation (seconds)
     connect_timeout: float = 2.0  # connect timeout; fast-fails when server is down
+    llm_endpoint: str = ""        # optional OpenAI-compatible API base URL for generative commands
+    llm_model: str = ""           # model name sent to the external LLM (overrides command Config)
