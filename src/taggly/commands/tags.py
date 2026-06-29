@@ -4,7 +4,7 @@ from typing import Dict, List
 from pydantic import BaseModel, Field
 
 from taggly.commands.ents import EntsCommand, EntsInput, EntsParams
-from taggly.commands.ext import ExtCommand, ExtInput
+from taggly.commands.ext import ExtCommand, ExtInput, ExtParams
 from taggly.commands.keys import KeysCommand, KeysConfig, KeysInput, KeysParams
 from taggly.commands.rank import RankCommand, RankInput, RankParams
 from taggly.commands.score import ScoreCommand, ScoreInput
@@ -12,6 +12,7 @@ from taggly.models.base import AbstractBaseCommand
 
 
 class TagsParams(BaseModel):
+    concepts: str = Field("concepts, entities, topics", description="Comma-separated concept categories to extract (spaces around commas are fine)") 
     max_ngram: int = Field(2, description="Maximum candidate tag word length")
     top_n: int = Field(10, description="Maximum number of tags to return per type")
     rank: bool = Field(False, description="Rank candidates by MMR for relevance and diversity")
@@ -46,7 +47,9 @@ class TagsCommand(AbstractBaseCommand):
         p = params or TagsParams()
 
         # Start with ext concepts dict (entities, topics, concepts, …)
-        output: Dict[str, List[str]] = dict(self._ext.operation(ExtInput(content=data.content)).concepts)
+        output: Dict[str, List[str]] = dict(
+            self._ext.operation(ExtInput(content=data.content), ExtParams(concepts=p.concepts)).concepts
+        )
 
         # Merge ents named entities into the entities group, deduplicated
         ents = self._ents.operation(EntsInput(content=data.content), EntsParams(top_n=p.top_n)).entities
