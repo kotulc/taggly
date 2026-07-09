@@ -1,4 +1,4 @@
-# Framework Philosophy
+# Taggly Framework
 
 Taggly is a **CLI-first, config-driven NLP framework**. Its goal is to let you add a new
 language task once and get a command-line tool, an HTTP endpoint, and reference docs from

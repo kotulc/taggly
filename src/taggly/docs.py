@@ -17,8 +17,8 @@ def generate_docs(registry, cli_app, output_dir: Path = None) -> None:
 
     readme = Path("README.md")
     if readme.exists():
-        shutil.copy2(readme, out / "home.md")
-        print("  docs/home.md")
+        shutil.copy2(readme, out / "about.md")
+        print("  docs/about.md")
 
     cmds_dir = out / "commands"
     cmds_dir.mkdir(exist_ok=True)
