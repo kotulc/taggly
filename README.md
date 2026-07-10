@@ -157,7 +157,7 @@ If a model is unavailable, taggly reports it clearly:
 
 ```bash
 taggly docs
-# docs/home.md, docs/commands/keys.md, docs/commands/ents.md, ...
+# docs/about.md, docs/commands/keys.md, docs/commands/ents.md, ...
 ```
 
 ## Configuration
@@ -175,6 +175,8 @@ Read from environment variables or a `.env` file in the project root.
 | `HF_TOKEN`       | `""`        | HuggingFace token for downloading gated models |
 | `API_TIMEOUT`    | `300.0`     | Read timeout for API delegation (seconds)      |
 | `CONNECT_TIMEOUT`| `2.0`       | Connect timeout; fast-fails if server is down  |
+| `LLM_ENDPOINT`   | `""`        | External LLM server URL (OpenAI-compatible)    |
+| `LLM_MODEL`      | `""`        | Model name to use on the external LLM server   |
 
 ### System config (`config/config.yaml`)
 
@@ -197,6 +199,59 @@ score:
 
 Only **Config** fields belong in `config/config.yaml`. Per-call options (**Params**) like
 `top_n`, `threshold`, and `concepts` are set per-request via CLI flags or API query params.
+
+### Using an external language model
+
+Generative commands (`desc`, `ext`) can use a remote language model via an OpenAI-compatible
+endpoint instead of downloading and running a local Gemma model. This is useful for integrating
+with hosted LLM services, local servers like LM Studio or Ollama, or internal proxies.
+
+Set `LLM_ENDPOINT` and `LLM_MODEL` in `.env`:
+
+```bash
+# .env
+LLM_ENDPOINT=http://127.0.0.1:1234
+LLM_MODEL=lmstudio-model
+```
+
+Then `desc` and `ext` commands will POST to `{LLM_ENDPOINT}/v1/chat/completions` with the
+specified model name. The endpoint must be compatible with OpenAI's chat-completions API
+(request/response shape). This works with:
+
+- **LM Studio** at `http://127.0.0.1:1234`
+- **Ollama** in OpenAI-compatibility mode: `http://localhost:11434`
+- **vLLM**, **llama.cpp**, **LM Studio**, **text-generation-webui**
+- Internal proxies in front of hosted providers (OpenAI, Anthropic, etc.)
+
+**Example with LM Studio:**
+
+First, find your loaded model's identifier. In LM Studio, this is shown in the "Server" panel
+or you can query `http://127.0.0.1:1234/v1/models` to see available models.
+
+```bash
+# .env
+LLM_ENDPOINT=http://127.0.0.1:1234
+LLM_MODEL=<your-lm-studio-model-id>
+```
+
+Replace `<your-lm-studio-model-id>` with the actual model identifier (e.g. `neural-chat-7b-v3-1`,
+`mistral-7b-instruct`, etc. — whatever model you have loaded in LM Studio).
+
+```bash
+taggly desc "Python is a programming language"
+# Uses your LM Studio model running locally instead of downloading Gemma
+
+taggly ext "Alice works at Acme Corp." --concepts '["person", "company"]'
+# Extraction via LM Studio model
+```
+
+**Note:** `LLM_ENDPOINT` must use an endpoint that does **not** require authentication (or has
+auth handled by a proxy). There is no built-in API key / bearer token support yet. If you need
+authenticated providers, set up a local proxy that injects credentials, or let us know and we
+can add API key support.
+
+If `LLM_ENDPOINT` is not set, `desc` and `ext` use the configured Gemma model (`config/config.yaml`
+`desc.model` / `ext.model`) and download it locally on first use.
 
 ### Priority chains
 

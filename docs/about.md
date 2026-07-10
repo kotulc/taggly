@@ -155,7 +155,7 @@ If a model is unavailable, taggly reports it clearly:
 
 ```bash
 taggly docs
-# docs/home.md, docs/commands/keys.md, docs/commands/ents.md, ...
+# docs/about.md, docs/commands/keys.md, docs/commands/ents.md, ...
 ```
 
 ## Configuration

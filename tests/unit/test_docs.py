@@ -33,20 +33,20 @@ def test_command_files_contain_name(docs_dir):
         assert name in content
 
 
-def test_readme_copied_as_home(docs_dir, monkeypatch, tmp_path):
-    """home.md is written when README.md exists in cwd."""
+def test_readme_copied_as_about(docs_dir, monkeypatch, tmp_path):
+    """about.md is written when README.md exists in cwd."""
     fake_readme = tmp_path / "README.md"
     fake_readme.write_text("# Test Project", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     out = tmp_path / "out"
     generate_docs(REGISTRY, CLI, output_dir=out)
-    assert (out / "home.md").exists()
-    assert (out / "home.md").read_text(encoding="utf-8") == "# Test Project"
+    assert (out / "about.md").exists()
+    assert (out / "about.md").read_text(encoding="utf-8") == "# Test Project"
 
 
-def test_no_home_without_readme(monkeypatch, tmp_path):
-    """home.md is not written when README.md is absent from cwd."""
+def test_no_about_without_readme(monkeypatch, tmp_path):
+    """about.md is not written when README.md is absent from cwd."""
     monkeypatch.chdir(tmp_path)
     out = tmp_path / "out"
     generate_docs(REGISTRY, CLI, output_dir=out)
-    assert not (out / "home.md").exists()
+    assert not (out / "about.md").exists()
