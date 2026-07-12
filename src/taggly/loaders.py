@@ -9,11 +9,12 @@ EMBED_MODELS = {
     "bge-large": "BAAI/bge-large-en-v1.5",
 }
 
-# Short names mapped to full Gemma instruct identifiers for generative commands
-GEMMA_MODELS = {
+# Short names mapped to full instruct-model identifiers for generative commands
+GEN_MODELS = {
     "gemma-2b": "google/gemma-4-E2B-it",
     "gemma-4b": "google/gemma-4-E4B-it",
     "gemma-12b": "google/gemma-4-12B-it",
+    "smollm-135m": "HuggingFaceTB/SmolLM2-135M-Instruct",
 }
 
 # External LLM endpoint set at startup via set_llm_endpoint(); empty = use local models
@@ -70,11 +71,14 @@ def load_embedder(name: str):
 def load_generator(name: str):
     """Return a cached text-generation callable — external API if configured, local model otherwise."""
     if _LLM_ENDPOINT:
-        model = _LLM_MODEL or name  # external APIs use their own model names, not GEMMA_MODELS
+        model = _LLM_MODEL or name  # external APIs use their own model names, not GEN_MODELS
         return _ExternalGenerator(_LLM_ENDPOINT, model, _LLM_TIMEOUT)
     from transformers import pipeline
-    from transformers import AutoTokenizer, AutoModelForMultimodalLM
-    hf_name = GEMMA_MODELS.get(name.lower(), name)
+    from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForMultimodalLM
+    hf_name = GEN_MODELS.get(name.lower(), name)
     tokenizer = AutoTokenizer.from_pretrained(hf_name, clean_up_tokenization_spaces=False)
-    model = AutoModelForMultimodalLM.from_pretrained(hf_name)
+    try:
+        model = AutoModelForMultimodalLM.from_pretrained(hf_name)
+    except ValueError:  # text-only models (e.g. smollm-135m) use the causal LM auto class
+        model = AutoModelForCausalLM.from_pretrained(hf_name)
     return pipeline("text-generation", model=model, tokenizer=tokenizer, clean_up_tokenization_spaces=False)

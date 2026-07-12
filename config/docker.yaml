@@ -1,7 +1,6 @@
-# taggly system configuration
-# Values here override built-in command defaults at startup.
-# Only Config fields are supported (system-level settings).
-# Per-call options are set via CLI flags or API query params.
+# taggly Docker image configuration — copied over config/config.yaml at image build time.
+# Generative commands default to the bundled SmolLM2 model so the container works offline
+# with no HuggingFace token. Values here override built-in command defaults at startup.
 
 keys:
   model: keybert           # 'yake' or 'keybert'
@@ -27,9 +26,9 @@ topics:
   model: all-minilm
 
 desc:
-  model: gemma-2b          # 'gemma-2b', 'gemma-4b', 'gemma-12b', or 'smollm-135m'
+  model: smollm-135m       # bundled; 'gemma-*' models need a mounted HF cache or HF_TOKEN
   max_tokens: 128
 
 ext:
-  model: gemma-2b
+  model: smollm-135m
   max_tokens: 256

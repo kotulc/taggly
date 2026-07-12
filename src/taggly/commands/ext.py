@@ -16,7 +16,7 @@ PROMPT = (
 
 
 class ExtConfig(BaseModel):
-    model: str = Field("gemma-2b", description="Generative model: 'gemma-2b', 'gemma-4b', or 'gemma-12b'")
+    model: str = Field("gemma-2b", description="Generative model: 'gemma-2b', 'gemma-4b', 'gemma-12b', or 'smollm-135m'")
     max_tokens: int = Field(256, description="Maximum number of tokens to generate")
 
 

@@ -7,13 +7,13 @@ Extract typed concepts from the supplied text as a JSON object.
 **CLI**
 
 ```
-taggly ext "Language models are transforming how we interact with text and data." --concepts concepts,entities,topics
+taggly ext "Language models are transforming how we interact with text and data." --concepts concepts, entities, topics
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/ext?concepts=concepts,entities,topics" \
+curl -X POST "http://localhost:8000/ext?concepts=concepts, entities, topics" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -30,7 +30,8 @@ Usage: taggly ext [OPTIONS] CONTENT
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
 │ --concepts        TEXT  Comma-separated concept categories to extract       │
-│                         [default: concepts,entities,topics]                 │
+│                         (spaces around commas are fine)                     │
+│                         [default: concepts, entities, topics]               │
 │ --help                  Show this message and exit.                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -73,11 +74,11 @@ Usage: taggly ext [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `model` | string | no | gemma-2b | Generative model: 'gemma-2b', 'gemma-4b', or 'gemma-12b' |
+| `model` | string | no | gemma-2b | Generative model: 'gemma-2b', 'gemma-4b', 'gemma-12b', or 'smollm-135m' |
 | `max_tokens` | integer | no | 256 | Maximum number of tokens to generate |
 
 ## Params
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `concepts` | string | no | concepts,entities,topics | Comma-separated concept categories to extract |
+| `concepts` | string | no | concepts, entities, topics | Comma-separated concept categories to extract (spaces around commas are fine) |

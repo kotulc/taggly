@@ -2,6 +2,7 @@
 
 import importlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -40,6 +41,19 @@ class _FakeKeyBERT:
     """Stub KeyBERT — avoids loading sentence-transformers through the keybert side door."""
     def extract_keywords(self, content, top_n=5, **kwargs):
         return [("stub", 0.5)] * min(top_n, 1)
+
+
+class _FakeClassifier:
+    """Stub sequence classifier — fixed logits so spam scoring runs without a model download."""
+    def __call__(self, **inputs):
+        import torch
+        return SimpleNamespace(logits=torch.tensor([[0.2, 0.8]]))
+
+
+class _FakeSpacy:
+    """Stub spaCy pipeline — fixed entities without downloading a language model."""
+    def __call__(self, text):
+        return SimpleNamespace(ents=[SimpleNamespace(text="stub")])
 
 
 _embedder_cache: dict = {}
@@ -81,3 +95,11 @@ def stub_loaders(monkeypatch):
         monkeypatch.setattr(keybert, "KeyBERT", lambda *a, **kw: _FakeKeyBERT())
     except ImportError:
         pass
+
+    # spam/tox build transformers pipelines directly and ents loads spaCy, bypassing the loaders
+    import spacy
+    import transformers
+    monkeypatch.setattr(spacy, "load", lambda name: _FakeSpacy())
+    monkeypatch.setattr(transformers, "pipeline", lambda *a, **kw: lambda text: [{"label": "toxic", "score": 0.8}])
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **kw: lambda text, return_tensors=None: {})
+    monkeypatch.setattr(transformers.AutoModelForSequenceClassification, "from_pretrained", lambda *a, **kw: _FakeClassifier())

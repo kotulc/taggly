@@ -1,5 +1,7 @@
 # taggly
 
+[![CI](https://github.com/kotulc/taggly/actions/workflows/ci.yml/badge.svg)](https://github.com/kotulc/taggly/actions/workflows/ci.yml)
+
 Taggly is a hyper extensible CLI-first NLP command framework. Add a command by implementing
 one class — it is automatically registered as a CLI sub-command, an API endpoint, and a docs
 page with no additional wiring.
@@ -19,6 +21,37 @@ Simply navigate to the cloned project folder and pip install the project:
 pip install -e .
 ```
 
+## Running with Docker
+
+Every push to `main` runs the test suite and, when it passes, builds and publishes an image
+to `ghcr.io/kotulc/taggly`. The image bundles all runtime models — `all-MiniLM-L6-v2`
+(embeddings), spaCy `en_core_web_lg` (entities), and `SmolLM2-135M-Instruct` (generation) —
+so the container works fully offline with no HuggingFace token:
+
+```bash
+docker run -p 8000:8000 ghcr.io/kotulc/taggly        # API server on :8000
+
+docker run --rm ghcr.io/kotulc/taggly taggly keys "natural language processing"  # one-off CLI
+```
+
+In the image, `desc` and `ext` default to the bundled `smollm-135m` model, and
+`HF_HUB_OFFLINE=1` serves the bundled models without probing huggingface.co. To use gated
+Gemma models instead, re-enable downloads and mount a config with the desired models plus
+your HF cache and token:
+
+```bash
+docker run -p 8000:8000 -e HF_HUB_OFFLINE=0 -v ./config:/app/config \
+  -v $HOME/.cache/huggingface:/root/.cache/huggingface -e HF_TOKEN ghcr.io/kotulc/taggly
+```
+
+To build locally (the `hf_token` build secret is optional — all bundled models are public,
+a token only raises download rate limits):
+
+```bash
+docker build -t taggly .
+docker build --secret id=hf_token,env=HF_TOKEN -t taggly .  # with a token
+```
+
 ## Commands
 
 Commands separate **Config** (system-level, set at deploy time via `config/config.yaml`) from
@@ -36,10 +69,12 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 | `score`  | Semantic similarity scores (cosine) | `model` | — |
 | `rank`   | Maximal Marginal Relevance ranking | `model` | `top_n`, `diversity` |
 | `topics` | Topic discovery via BERTopic | `model` | `top_n` |
+| `tags`   | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank` |
 
 Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
 `bge-base`, `bge-large`. Generative commands (`desc`, `ext`) use Gemma models —
-`gemma-2b`, `gemma-4b`, `gemma-12b`.
+`gemma-2b`, `gemma-4b`, `gemma-12b` — or the compact ungated `smollm-135m`
+(SmolLM2-135M-Instruct), which needs no HuggingFace token.
 
 Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
 described in [`docs/framework.md`](docs/framework.md).

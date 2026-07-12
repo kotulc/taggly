@@ -1,5 +1,7 @@
 # taggly
 
+[![CI](https://github.com/kotulc/taggly/actions/workflows/ci.yml/badge.svg)](https://github.com/kotulc/taggly/actions/workflows/ci.yml)
+
 Taggly is a hyper extensible CLI-first NLP command framework. Add a command by implementing
 one class — it is automatically registered as a CLI sub-command, an API endpoint, and a docs
 page with no additional wiring.
@@ -13,8 +15,41 @@ page with no additional wiring.
 
 ## Installation
 
+Simply navigate to the cloned project folder and pip install the project:
+
 ```bash
 pip install -e .
+```
+
+## Running with Docker
+
+Every push to `main` runs the test suite and, when it passes, builds and publishes an image
+to `ghcr.io/kotulc/taggly`. The image bundles all runtime models — `all-MiniLM-L6-v2`
+(embeddings), spaCy `en_core_web_lg` (entities), and `SmolLM2-135M-Instruct` (generation) —
+so the container works fully offline with no HuggingFace token:
+
+```bash
+docker run -p 8000:8000 ghcr.io/kotulc/taggly        # API server on :8000
+
+docker run --rm ghcr.io/kotulc/taggly taggly keys "natural language processing"  # one-off CLI
+```
+
+In the image, `desc` and `ext` default to the bundled `smollm-135m` model, and
+`HF_HUB_OFFLINE=1` serves the bundled models without probing huggingface.co. To use gated
+Gemma models instead, re-enable downloads and mount a config with the desired models plus
+your HF cache and token:
+
+```bash
+docker run -p 8000:8000 -e HF_HUB_OFFLINE=0 -v ./config:/app/config \
+  -v $HOME/.cache/huggingface:/root/.cache/huggingface -e HF_TOKEN ghcr.io/kotulc/taggly
+```
+
+To build locally (the `hf_token` build secret is optional — all bundled models are public,
+a token only raises download rate limits):
+
+```bash
+docker build -t taggly .
+docker build --secret id=hf_token,env=HF_TOKEN -t taggly .  # with a token
 ```
 
 ## Commands
@@ -34,10 +69,12 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 | `score`  | Semantic similarity scores (cosine) | `model` | — |
 | `rank`   | Maximal Marginal Relevance ranking | `model` | `top_n`, `diversity` |
 | `topics` | Topic discovery via BERTopic | `model` | `top_n` |
+| `tags`   | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank` |
 
 Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
 `bge-base`, `bge-large`. Generative commands (`desc`, `ext`) use Gemma models —
-`gemma-2b`, `gemma-4b`, `gemma-12b`.
+`gemma-2b`, `gemma-4b`, `gemma-12b` — or the compact ungated `smollm-135m`
+(SmolLM2-135M-Instruct), which needs no HuggingFace token.
 
 Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
 described in [`docs/framework.md`](docs/framework.md).
@@ -173,6 +210,8 @@ Read from environment variables or a `.env` file in the project root.
 | `HF_TOKEN`       | `""`        | HuggingFace token for downloading gated models |
 | `API_TIMEOUT`    | `300.0`     | Read timeout for API delegation (seconds)      |
 | `CONNECT_TIMEOUT`| `2.0`       | Connect timeout; fast-fails if server is down  |
+| `LLM_ENDPOINT`   | `""`        | External LLM server URL (OpenAI-compatible)    |
+| `LLM_MODEL`      | `""`        | Model name to use on the external LLM server   |
 
 ### System config (`config/config.yaml`)
 
@@ -195,6 +234,59 @@ score:
 
 Only **Config** fields belong in `config/config.yaml`. Per-call options (**Params**) like
 `top_n`, `threshold`, and `concepts` are set per-request via CLI flags or API query params.
+
+### Using an external language model
+
+Generative commands (`desc`, `ext`) can use a remote language model via an OpenAI-compatible
+endpoint instead of downloading and running a local Gemma model. This is useful for integrating
+with hosted LLM services, local servers like LM Studio or Ollama, or internal proxies.
+
+Set `LLM_ENDPOINT` and `LLM_MODEL` in `.env`:
+
+```bash
+# .env
+LLM_ENDPOINT=http://127.0.0.1:1234
+LLM_MODEL=lmstudio-model
+```
+
+Then `desc` and `ext` commands will POST to `{LLM_ENDPOINT}/v1/chat/completions` with the
+specified model name. The endpoint must be compatible with OpenAI's chat-completions API
+(request/response shape). This works with:
+
+- **LM Studio** at `http://127.0.0.1:1234`
+- **Ollama** in OpenAI-compatibility mode: `http://localhost:11434`
+- **vLLM**, **llama.cpp**, **LM Studio**, **text-generation-webui**
+- Internal proxies in front of hosted providers (OpenAI, Anthropic, etc.)
+
+**Example with LM Studio:**
+
+First, find your loaded model's identifier. In LM Studio, this is shown in the "Server" panel
+or you can query `http://127.0.0.1:1234/v1/models` to see available models.
+
+```bash
+# .env
+LLM_ENDPOINT=http://127.0.0.1:1234
+LLM_MODEL=<your-lm-studio-model-id>
+```
+
+Replace `<your-lm-studio-model-id>` with the actual model identifier (e.g. `neural-chat-7b-v3-1`,
+`mistral-7b-instruct`, etc. — whatever model you have loaded in LM Studio).
+
+```bash
+taggly desc "Python is a programming language"
+# Uses your LM Studio model running locally instead of downloading Gemma
+
+taggly ext "Alice works at Acme Corp." --concepts '["person", "company"]'
+# Extraction via LM Studio model
+```
+
+**Note:** `LLM_ENDPOINT` must use an endpoint that does **not** require authentication (or has
+auth handled by a proxy). There is no built-in API key / bearer token support yet. If you need
+authenticated providers, set up a local proxy that injects credentials, or let us know and we
+can add API key support.
+
+If `LLM_ENDPOINT` is not set, `desc` and `ext` use the configured Gemma model (`config/config.yaml`
+`desc.model` / `ext.model`) and download it locally on first use.
 
 ### Priority chains
 

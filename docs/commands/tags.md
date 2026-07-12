@@ -1,19 +1,19 @@
 # 'tags' Command
 
-Extract a unified ranked list of tags combining keywords and named entities.
+Extract typed tag groups and a combined relevance-sorted list.
 
 ## Examples
 
 **CLI**
 
 ```
-taggly tags "Language models are transforming how we interact with text and data." --max-ngram 2
+taggly tags "Language models are transforming how we interact with text and data." --concepts concepts, entities, topics
 ```
 
 **API**
 
 ```bash
-curl -X POST "http://localhost:8000/tags?max_ngram=2" \
+curl -X POST "http://localhost:8000/tags?concepts=concepts, entities, topics" \
   -H "Content-Type: application/json" \
   -d '{"content": "Language models are transforming how we interact with text and data."}'
 ```
@@ -23,15 +23,20 @@ curl -X POST "http://localhost:8000/tags?max_ngram=2" \
 ```
 Usage: taggly tags [OPTIONS] CONTENT                                          
                                                                                
- Extract a unified ranked list of tags combining keywords and named entities.  
+ Extract typed tag groups and a combined relevance-sorted list.                
                                                                                
 ┌─ Arguments ─────────────────────────────────────────────────────────────────┐
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
+│ --concepts                  TEXT     Comma-separated concept categories to  │
+│                                      extract (spaces around commas are      │
+│                                      fine)                                  │
+│                                      [default: concepts, entities, topics]  │
 │ --max-ngram                 INTEGER  Maximum candidate tag word length      │
 │                                      [default: 2]                           │
-│ --top-n                     INTEGER  Maximum number of tags to return       │
+│ --top-n                     INTEGER  Maximum number of tags to return per   │
+│                                      type                                   │
 │                                      [default: 10]                          │
 │ --rank         --no-rank             Rank candidates by MMR for relevance   │
 │                                      and diversity                          │
@@ -52,15 +57,13 @@ Usage: taggly tags [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters**: `max_ngram`, `top_n`, `rank`
+**Query parameters**: `concepts`, `max_ngram`, `top_n`, `rank`
 
 **Response**
 
 ```json
 {
-  "tags": [
-    "..."
-  ]
+  "tags": {}
 }
 ```
 
@@ -74,12 +77,13 @@ Usage: taggly tags [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tags` | array[string] | yes | — | Extracted tags in ranked order |
+| `tags` | dict[str, array[string]] | yes | — | Typed tag groups from each source plus a combined 'scored' or 'ranked' list |
 
 ## Params
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
+| `concepts` | string | no | concepts, entities, topics | Comma-separated concept categories to extract (spaces around commas are fine) |
 | `max_ngram` | integer | no | 2 | Maximum candidate tag word length |
-| `top_n` | integer | no | 10 | Maximum number of tags to return |
+| `top_n` | integer | no | 10 | Maximum number of tags to return per type |
 | `rank` | boolean | no | False | Rank candidates by MMR for relevance and diversity |
