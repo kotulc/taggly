@@ -45,6 +45,17 @@ class TestSetLlmEndpoint:
         finally:
             loaders.load_generator.cache_clear = original_clear
 
+    def test_set_llm_endpoint_propagates_timeout(self):
+        """load_generator builds _ExternalGenerator with the timeout from set_llm_endpoint."""
+        from taggly import loaders
+
+        loaders.set_llm_endpoint("http://localhost:1234", "my-model", timeout=42.0)
+        try:
+            gen = loaders.load_generator("my-model")
+            assert gen._timeout == 42.0
+        finally:
+            loaders.set_llm_endpoint("", "")
+
     def test_set_llm_endpoint_with_empty_model(self):
         """set_llm_endpoint allows empty model name (uses command's model name)."""
         from taggly import loaders
@@ -160,6 +171,23 @@ class TestExternalGenerator:
 
             call_args = mock_post.call_args
             assert call_args[1]["json"]["max_tokens"] == 512
+
+    def test_external_generator_custom_timeout(self):
+        """_ExternalGenerator posts with the timeout it was constructed with."""
+        from taggly.loaders import _ExternalGenerator
+
+        gen = _ExternalGenerator("http://localhost:1234", "my-model", timeout=42.0)
+
+        with patch("httpx.post") as mock_post:
+            mock_response = Mock()
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "response"}}]
+            }
+            mock_post.return_value = mock_response
+
+            gen("hello")
+
+            assert mock_post.call_args[1]["timeout"] == 42.0
 
     def test_external_generator_timeout(self):
         """_ExternalGenerator uses 300s timeout."""
@@ -359,3 +387,44 @@ class TestProbeExternalLlm:
 
             call_args = mock_get.call_args
             assert call_args[0][0] == "http://localhost:1234/v1/models"
+
+    def test_probe_llm_passes_when_model_served(self):
+        """_probe_llm succeeds when the configured model appears in /v1/models."""
+        from taggly.main import _probe_llm
+
+        with patch("httpx.get") as mock_get:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"data": [{"id": "my-model"}, {"id": "other"}]}
+            mock_get.return_value = mock_response
+
+            _probe_llm("http://localhost:1234", "my-model")
+
+    def test_probe_llm_aborts_when_model_not_served(self, capsys):
+        """_probe_llm exits 1 when the configured model is missing from /v1/models."""
+        from taggly.main import _probe_llm
+
+        with patch("httpx.get") as mock_get:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"data": [{"id": "other"}]}
+            mock_get.return_value = mock_response
+
+            with pytest.raises(SystemExit) as exc:
+                _probe_llm("http://localhost:1234", "my-model")
+
+            assert exc.value.code == 1
+            err = capsys.readouterr().err
+            assert "my-model" in err and "other" in err
+
+    def test_probe_llm_skips_model_check_on_nonstandard_response(self):
+        """_probe_llm tolerates /v1/models responses it cannot parse."""
+        from taggly.main import _probe_llm
+
+        with patch("httpx.get") as mock_get:
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.side_effect = ValueError("not json")
+            mock_get.return_value = mock_response
+
+            _probe_llm("http://localhost:1234", "my-model")

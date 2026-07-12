@@ -79,19 +79,19 @@ def _add_reserved(app: typer.Typer, registry, config) -> None:
 
     @app.command("start")
     def _start():
-        """Start the taggly API server (foreground — press Ctrl+C to stop)."""
+        """Start the taggly API server (foreground - press Ctrl+C to stop)."""
         import uvicorn
         from taggly.api import build_api
-        from taggly.main import _probe
+        from taggly.main import startup_checks
 
         host = config.host if config else "127.0.0.1"
         port = config.port if config else 8000
-        warmup = config.warmup if config else []
 
         if config and config.hf_token:
             os.environ["HF_TOKEN"] = config.hf_token
 
         api = build_api(registry)
-        _probe(registry, warmup)
-        typer.echo(f"Starting API server → http://{host}:{port}  (Ctrl+C to stop)")
+        if config:
+            startup_checks(registry, config)
+        typer.echo(f"Starting API server -> http://{host}:{port}  (Ctrl+C to stop)")
         uvicorn.run(api, host=host, port=port)

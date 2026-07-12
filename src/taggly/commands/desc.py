@@ -24,6 +24,7 @@ class DescOutput(BaseModel):
 
 class DescCommand(AbstractBaseCommand):
     name = "desc"
+    requires_llm = True
     Config = DescConfig
     Input = DescInput
     Output = DescOutput

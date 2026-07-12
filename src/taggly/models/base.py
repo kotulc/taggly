@@ -13,6 +13,7 @@ class AbstractBaseCommand(ABC):
     name: str
     Input: Type[BaseModel]
     Output: Type[BaseModel]
+    requires_llm: bool = False  # True for generative commands whose warmup needs an LLM source
 
     def __init__(self, api_url: str=None, api_timeout: float=300.0, connect_timeout: float=2.0):
         self.api_url = api_url

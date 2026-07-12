@@ -19,13 +19,15 @@ GEMMA_MODELS = {
 # External LLM endpoint set at startup via set_llm_endpoint(); empty = use local models
 _LLM_ENDPOINT: str = ""
 _LLM_MODEL: str = ""
+_LLM_TIMEOUT: float = 300.0
 
 
-def set_llm_endpoint(endpoint: str, model: str = "") -> None:
+def set_llm_endpoint(endpoint: str, model: str = "", timeout: float = 300.0) -> None:
     """Configure an external OpenAI-compatible LLM endpoint for load_generator."""
-    global _LLM_ENDPOINT, _LLM_MODEL
+    global _LLM_ENDPOINT, _LLM_MODEL, _LLM_TIMEOUT
     _LLM_ENDPOINT = endpoint
     _LLM_MODEL = model
+    _LLM_TIMEOUT = timeout
     load_generator.cache_clear()
 
 
@@ -36,9 +38,10 @@ class _ExternalGenerator:
     so callers (ext, desc) need no changes.
     """
 
-    def __init__(self, endpoint: str, model: str):
+    def __init__(self, endpoint: str, model: str, timeout: float = 300.0):
         self._url = f"{endpoint.rstrip('/')}/v1/chat/completions"
         self._model = model
+        self._timeout = timeout
 
     def __call__(self, messages, generation_config=None, **kwargs):
         import httpx
@@ -47,7 +50,7 @@ class _ExternalGenerator:
         response = httpx.post(
             self._url,
             json={"model": self._model, "messages": chat, "max_tokens": max_tokens},
-            timeout=300.0,
+            timeout=self._timeout,
         )
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
@@ -68,7 +71,7 @@ def load_generator(name: str):
     """Return a cached text-generation callable — external API if configured, local model otherwise."""
     if _LLM_ENDPOINT:
         model = _LLM_MODEL or name  # external APIs use their own model names, not GEMMA_MODELS
-        return _ExternalGenerator(_LLM_ENDPOINT, model)
+        return _ExternalGenerator(_LLM_ENDPOINT, model, _LLM_TIMEOUT)
     from transformers import pipeline
     from transformers import AutoTokenizer, AutoModelForMultimodalLM
     hf_name = GEMMA_MODELS.get(name.lower(), name)

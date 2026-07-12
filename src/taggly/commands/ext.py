@@ -34,6 +34,7 @@ class ExtOutput(BaseModel):
 
 class ExtCommand(AbstractBaseCommand):
     name = "ext"
+    requires_llm = True
     Config = ExtConfig
     Params = ExtParams
     Input = ExtInput
