@@ -12,7 +12,7 @@ keys:
   use_mmr: false
 
 ents:
-  language: en_core_web_lg  # any installed spaCy model name
+  language: en_core_web_sm  # any installed spaCy model name
 
 polar:
   model: vader             # 'vader' or 'blob'
