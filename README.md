@@ -25,7 +25,7 @@ pip install -e .
 
 Every push to `main` runs the test suite and, when it passes, builds and publishes an image
 to `ghcr.io/kotulc/taggly`. The image bundles all runtime models — `all-MiniLM-L6-v2`
-(embeddings), spaCy `en_core_web_lg` (entities), and `SmolLM2-135M-Instruct` (generation) —
+(embeddings), spaCy `en_core_web_sm` (entities), and `SmolLM2-135M-Instruct` (generation) —
 so the container works fully offline with no HuggingFace token:
 
 ```bash
@@ -65,10 +65,9 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 | `ext`    | Typed concept extraction via a language model | `model`, `max_tokens` | `concepts` |
 | `score`  | Semantic similarity scores (cosine) | `model` | — |
 | `rank`   | Maximal Marginal Relevance ranking | `model` | `top_n`, `diversity` |
-| `topics` | Topic discovery via BERTopic | `model` | `top_n` |
 | `tags`   | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank` |
 
-Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
+Semantic commands (`score`, `rank`) share embedding models — `all-minilm`,
 `bge-base`, `bge-large`. Generative commands (`desc`, `ext`) default to the compact ungated
 `smollm-135m` (SmolLM2-135M-Instruct), which needs no HuggingFace token; the gated Gemma
 models (`gemma-2b`, `gemma-4b`, `gemma-12b`) can be configured for higher quality.
@@ -99,9 +98,6 @@ taggly score "machine learning" --candidates '["deep learning", "cooking", "neur
 
 taggly ext "Python was created by Guido van Rossum at CWI."
 # {"concepts": {"entities": ["Guido van Rossum", "CWI"], "topics": ["Python"], ...}}
-
-taggly topics "Language models are changing AI." "BERT and GPT are key examples."
-# {"topics": ["language", "models", "bert"]}
 ```
 
 ## Running as API

@@ -68,11 +68,6 @@ def _fake_generator(name: str) -> _FakeGenerator:
     return _generator_cache.setdefault(name, _FakeGenerator(name))
 
 
-def _fake_topics(self, documents, params):
-    """Stub BERTopic — returns fixed keywords without running the real model."""
-    return ["stub_topic", "keyword"] if len(documents) >= 2 else []
-
-
 @pytest.fixture(autouse=True)
 def stub_loaders(monkeypatch):
     """Patch load_embedder and load_generator in every command module that imports them."""
@@ -85,9 +80,6 @@ def stub_loaders(monkeypatch):
             monkeypatch.setattr(mod, "load_embedder", _fake_embedder)
         if hasattr(mod, "load_generator"):
             monkeypatch.setattr(mod, "load_generator", _fake_generator)
-
-    from taggly.commands.topics import TopicsCommand
-    monkeypatch.setattr(TopicsCommand, "_topics", _fake_topics)
 
     # keybert.KeyBERT loads sentence-transformers internally, bypassing load_embedder
     try:

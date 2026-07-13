@@ -23,9 +23,6 @@ score:
 rank:
   model: all-minilm
 
-topics:
-  model: all-minilm
-
 desc:
   model: smollm-135m       # 'smollm-135m' (ungated), 'gemma-2b', 'gemma-4b', or 'gemma-12b'
   max_tokens: 128
