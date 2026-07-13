@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 import taggly.commands
+import taggly.loaders
 
 
 class _FakeEmbedder:
@@ -80,6 +81,9 @@ def stub_loaders(monkeypatch):
             monkeypatch.setattr(mod, "load_embedder", _fake_embedder)
         if hasattr(mod, "load_generator"):
             monkeypatch.setattr(mod, "load_generator", _fake_generator)
+
+    # loaders.generate resolves load_generator inside the loaders module itself
+    monkeypatch.setattr(taggly.loaders, "load_generator", _fake_generator)
 
     # keybert.KeyBERT loads sentence-transformers internally, bypassing load_embedder
     try:

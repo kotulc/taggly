@@ -63,6 +63,19 @@ class _ExternalGenerator:
         return [{"generated_text": content}]
 
 
+def generate(model: str, messages: list, max_tokens: int) -> str:
+    """Run one greedy chat generation and return the assistant reply text.
+
+    Greedy decoding (do_sample=False) keeps small models on-task; their default
+    sampling settings tend to echo the prompt or ramble.
+    """
+    from transformers import GenerationConfig
+    config = GenerationConfig(max_new_tokens=max_tokens, do_sample=False)
+    output = load_generator(model)(messages, generation_config=config)
+    result = output[0]["generated_text"]
+    return result[-1]["content"] if isinstance(result, list) else result
+
+
 @lru_cache(maxsize=None)
 def load_embedder(name: str):
     """Load and cache a SentenceTransformer by short name or full identifier."""

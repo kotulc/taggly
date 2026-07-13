@@ -2,11 +2,14 @@
 
 from pydantic import BaseModel, Field
 
-from taggly.loaders import load_generator
+from taggly.loaders import generate, load_generator
 from taggly.models.base import AbstractBaseCommand
 
-# Model query prompt template
+# Prompt includes a one-shot worked example — small models copy a demonstrated
+# format far more reliably than they follow format descriptions.
 PROMPT = "Describe the following text in a single short sentence:\n\n{}"
+EXAMPLE_TEXT = "Marie Curie won the Nobel Prize in Paris."
+EXAMPLE_REPLY = "A note about Marie Curie receiving the Nobel Prize in Paris."
 
 
 class DescConfig(BaseModel):
@@ -39,11 +42,10 @@ class DescCommand(AbstractBaseCommand):
 
     def operation(self, data: DescInput, params: BaseModel=None) -> DescOutput:
         """Generate a concise description of the supplied text."""
-        from transformers import GenerationConfig
-        messages = [{"role": "user", "content": PROMPT.format(data.content)}]
-        output = load_generator(self._config.model)(
-            messages, generation_config=GenerationConfig(max_new_tokens=self._config.max_tokens)
-        )
-        result = output[0]["generated_text"]
-        text = result[-1]["content"] if isinstance(result, list) else result
+        messages = [
+            {"role": "user", "content": PROMPT.format(EXAMPLE_TEXT)},
+            {"role": "assistant", "content": EXAMPLE_REPLY},
+            {"role": "user", "content": PROMPT.format(data.content)},
+        ]
+        text = generate(self._config.model, messages, self._config.max_tokens)
         return DescOutput(description=text.strip())

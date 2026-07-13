@@ -1,6 +1,6 @@
 # 'ext' Command
 
-Extract typed concepts from the supplied text as a JSON object.
+Extract typed concepts from the supplied text.
 
 ## Examples
 
@@ -23,16 +23,22 @@ curl -X POST "http://localhost:8000/ext?concepts=concepts, entities, topics" \
 ```
 Usage: taggly ext [OPTIONS] CONTENT                                           
                                                                                
- Extract typed concepts from the supplied text as a JSON object.               
+ Extract typed concepts from the supplied text.                                
                                                                                
 ┌─ Arguments ─────────────────────────────────────────────────────────────────┐
 │ *    content      TEXT  [required]                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --concepts        TEXT  Comma-separated concept categories to extract       │
-│                         (spaces around commas are fine)                     │
-│                         [default: concepts, entities, topics]               │
-│ --help                  Show this message and exit.                         │
+│ --concepts                         TEXT  Comma-separated concept categories │
+│                                          to extract (spaces around commas   │
+│                                          are fine)                          │
+│                                          [default: concepts, entities,      │
+│                                          topics]                            │
+│ --structured    --no-structured          Extract all concepts in one        │
+│                                          structured JSON generation instead │
+│                                          of one list generation per concept │
+│                                          [default: no-structured]           │
+│ --help                                   Show this message and exit.        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,7 +54,7 @@ Usage: taggly ext [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters**: `concepts`
+**Query parameters**: `concepts`, `structured`
 
 **Response**
 
@@ -82,3 +88,4 @@ Usage: taggly ext [OPTIONS] CONTENT
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `concepts` | string | no | concepts, entities, topics | Comma-separated concept categories to extract (spaces around commas are fine) |
+| `structured` | boolean | no | False | Extract all concepts in one structured JSON generation instead of one list generation per concept |
