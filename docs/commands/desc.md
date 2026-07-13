@@ -69,5 +69,5 @@ Usage: taggly desc [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `model` | string | no | gemma-2b | Generative model: 'gemma-2b', 'gemma-4b', 'gemma-12b', or 'smollm-135m' |
+| `model` | string | no | smollm-135m | Generative model: 'smollm-135m', 'gemma-2b', 'gemma-4b', or 'gemma-12b' |
 | `max_tokens` | integer | no | 128 | Maximum number of tokens to generate |

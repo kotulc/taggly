@@ -47,7 +47,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build with the bundled models; HF_TOKEN is optional (public models, higher rate limits)
+      # Build with the bundled models (all public — no HF token required)
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -55,7 +55,6 @@ jobs:
           tags: ${{ env.IMAGE }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          secrets: hf_token=${{ secrets.HF_TOKEN }}
 
       # Prove the bundled models work with no network before publishing
       - name: Smoke test image offline

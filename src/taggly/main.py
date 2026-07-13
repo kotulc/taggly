@@ -52,7 +52,8 @@ def _check_hf_token(token: str) -> None:
 
 
 def _check_llm(registry, config) -> None:
-    """Abort when warmup includes generative commands but no usable LLM source is configured."""
+    """Abort when warmup includes gated-model commands but no usable LLM source is configured."""
+    from taggly.loaders import GATED_MODELS
     names = [n for n in config.warmup if getattr(registry.get(n), "requires_llm", False)]
     if not names:
         return
@@ -63,11 +64,16 @@ def _check_llm(registry, config) -> None:
             sys.exit(1)
         return
 
+    gated = [n for n in names
+             if getattr(getattr(registry[n], "_config", None), "model", "").lower() in GATED_MODELS]
+    if not gated:
+        return  # ungated models (e.g. smollm-135m) download without a token
+
     if not config.hf_token:
-        print(f"\nStartup aborted — warmup commands need an LLM source: {', '.join(names)}.", file=sys.stderr)
+        print(f"\nStartup aborted — warmup commands use gated models: {', '.join(gated)}.", file=sys.stderr)
         print(
-            "  Set LLM_ENDPOINT and LLM_MODEL to use an external API, or HF_TOKEN to "
-            "download local models from huggingface.co.",
+            "  Set HF_TOKEN to download gated models from huggingface.co, or LLM_ENDPOINT "
+            "and LLM_MODEL to use an external API.",
             file=sys.stderr,
         )
         sys.exit(1)

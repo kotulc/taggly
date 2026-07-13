@@ -10,7 +10,7 @@ PROMPT = "Describe the following text in a single short sentence:\n\n{}"
 
 
 class DescConfig(BaseModel):
-    model: str = Field("gemma-2b", description="Generative model: 'gemma-2b', 'gemma-4b', 'gemma-12b', or 'smollm-135m'")
+    model: str = Field("smollm-135m", description="Generative model: 'smollm-135m', 'gemma-2b', 'gemma-4b', or 'gemma-12b'")
     max_tokens: int = Field(128, description="Maximum number of tokens to generate")
 
 

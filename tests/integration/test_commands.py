@@ -1,5 +1,6 @@
 """Integration tests: verify all registered commands are valid, documented, CLI-callable, and API-reachable."""
 
+import re
 from typing import get_args, get_origin
 
 import pytest
@@ -70,12 +71,13 @@ def test_cli_help(name, cmd):
     """CLI help contains the operation docstring and Params fields as --options."""
     result = CLI_RUNNER.invoke(CLI_APP, [name, "--help"])
     assert result.exit_code == 0, result.output
-    assert cmd.operation.__doc__.strip() in result.output
+    output = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", result.output)  # rich styles split option names
+    assert cmd.operation.__doc__.strip() in output
 
     params_cls = getattr(cmd, "Params", None)
     if params_cls is not None:
         for fname in params_cls.model_fields:
-            assert f"--{fname.replace('_', '-')}" in result.output
+            assert f"--{fname.replace('_', '-')}" in output
 
 
 @pytest.mark.parametrize("name,cmd", COMMANDS)

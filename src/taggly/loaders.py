@@ -17,6 +17,9 @@ GEN_MODELS = {
     "smollm-135m": "HuggingFaceTB/SmolLM2-135M-Instruct",
 }
 
+# Models that require accepting the HF license and an access token to download
+GATED_MODELS = {"gemma-2b", "gemma-4b", "gemma-12b"}
+
 # External LLM endpoint set at startup via set_llm_endpoint(); empty = use local models
 _LLM_ENDPOINT: str = ""
 _LLM_MODEL: str = ""

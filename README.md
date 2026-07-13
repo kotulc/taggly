@@ -34,22 +34,19 @@ docker run -p 8000:8000 ghcr.io/kotulc/taggly        # API server on :8000
 docker run --rm ghcr.io/kotulc/taggly taggly keys "natural language processing"  # one-off CLI
 ```
 
-In the image, `desc` and `ext` default to the bundled `smollm-135m` model, and
-`HF_HUB_OFFLINE=1` serves the bundled models without probing huggingface.co. To use gated
-Gemma models instead, re-enable downloads and mount a config with the desired models plus
-your HF cache and token:
+The image sets `HF_HUB_OFFLINE=1` to serve the bundled models without probing huggingface.co.
+To use gated Gemma models instead, re-enable downloads and mount a config with the desired
+models plus your HF cache and token:
 
 ```bash
 docker run -p 8000:8000 -e HF_HUB_OFFLINE=0 -v ./config:/app/config \
   -v $HOME/.cache/huggingface:/root/.cache/huggingface -e HF_TOKEN ghcr.io/kotulc/taggly
 ```
 
-To build locally (the `hf_token` build secret is optional — all bundled models are public,
-a token only raises download rate limits):
+To build locally (all bundled models are public — no HF token required):
 
 ```bash
 docker build -t taggly .
-docker build --secret id=hf_token,env=HF_TOKEN -t taggly .  # with a token
 ```
 
 ## Commands
@@ -72,9 +69,9 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 | `tags`   | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank` |
 
 Semantic commands (`score`, `rank`, `topics`) share embedding models — `all-minilm`,
-`bge-base`, `bge-large`. Generative commands (`desc`, `ext`) use Gemma models —
-`gemma-2b`, `gemma-4b`, `gemma-12b` — or the compact ungated `smollm-135m`
-(SmolLM2-135M-Instruct), which needs no HuggingFace token.
+`bge-base`, `bge-large`. Generative commands (`desc`, `ext`) default to the compact ungated
+`smollm-135m` (SmolLM2-135M-Instruct), which needs no HuggingFace token; the gated Gemma
+models (`gemma-2b`, `gemma-4b`, `gemma-12b`) can be configured for higher quality.
 
 Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
 described in [`docs/framework.md`](docs/framework.md).
@@ -166,9 +163,10 @@ taggly start
 
 ## Model downloads
 
-Models are downloaded automatically on first use (or at warmup) and cached locally. Gated
-models such as Gemma (`desc`, `ext`) require accepting the model license on its HuggingFace
-page and authenticating. Provide a token any of these ways:
+Models are downloaded automatically on first use (or at warmup) and cached locally. The
+defaults are all public and need no authentication. Optional gated models such as Gemma
+require accepting the model license on its HuggingFace page and authenticating. Provide a
+token any of these ways:
 
 ```bash
 # 1. Standard HuggingFace env var (read by transformers directly)
@@ -238,7 +236,7 @@ Only **Config** fields belong in `config/config.yaml`. Per-call options (**Param
 ### Using an external language model
 
 Generative commands (`desc`, `ext`) can use a remote language model via an OpenAI-compatible
-endpoint instead of downloading and running a local Gemma model. This is useful for integrating
+endpoint instead of downloading and running a local model. This is useful for integrating
 with hosted LLM services, local servers like LM Studio or Ollama, or internal proxies.
 
 Set `LLM_ENDPOINT` and `LLM_MODEL` in `.env`:
@@ -274,7 +272,7 @@ Replace `<your-lm-studio-model-id>` with the actual model identifier (e.g. `neur
 
 ```bash
 taggly desc "Python is a programming language"
-# Uses your LM Studio model running locally instead of downloading Gemma
+# Uses your LM Studio model running locally instead of the local default model
 
 taggly ext "Alice works at Acme Corp." --concepts '["person", "company"]'
 # Extraction via LM Studio model
@@ -285,8 +283,8 @@ auth handled by a proxy). There is no built-in API key / bearer token support ye
 authenticated providers, set up a local proxy that injects credentials, or let us know and we
 can add API key support.
 
-If `LLM_ENDPOINT` is not set, `desc` and `ext` use the configured Gemma model (`config/config.yaml`
-`desc.model` / `ext.model`) and download it locally on first use.
+If `LLM_ENDPOINT` is not set, `desc` and `ext` use the configured local model (`config/config.yaml`
+`desc.model` / `ext.model`, default `smollm-135m`) and download it locally on first use.
 
 ### Priority chains
 

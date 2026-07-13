@@ -21,8 +21,11 @@ class _BadCommand:
 
 
 class _LlmCommand:
-    """Stub generative command requiring an LLM source."""
+    """Stub generative command requiring an LLM source (gated model by default)."""
     requires_llm = True
+
+    def __init__(self, model="gemma-2b"):
+        self._config = SimpleNamespace(model=model)
 
     def warmup(self):
         pass
@@ -67,12 +70,17 @@ def test_check_llm_ignores_non_llm_warmup():
 
 
 def test_check_llm_aborts_without_llm_source(capsys):
-    """_check_llm exits 1 when a generative command has no endpoint, model, or HF token."""
+    """_check_llm exits 1 when a gated-model command has no endpoint, model, or HF token."""
     with pytest.raises(SystemExit) as exc:
         _check_llm({"gen": _LlmCommand()}, _config())
     assert exc.value.code == 1
     err = capsys.readouterr().err
     assert "LLM_ENDPOINT" in err and "HF_TOKEN" in err
+
+
+def test_check_llm_passes_with_ungated_model():
+    """_check_llm returns without a token when the configured model is not gated."""
+    _check_llm({"gen": _LlmCommand(model="smollm-135m")}, _config())
 
 
 def test_check_llm_requires_model_with_endpoint(capsys):
