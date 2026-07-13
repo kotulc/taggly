@@ -3,6 +3,7 @@
 from typing import List
 from pydantic import BaseModel, Field
 
+from taggly.loaders import load_embedder
 from taggly.models.base import AbstractBaseCommand
 
 
@@ -18,6 +19,7 @@ class KeysConfig(BaseModel):
 class KeysParams(BaseModel):
     top_n: int = Field(10, description="Maximum number of keywords to return")
     ngram_max: int = Field(1, description="Maximum n-gram size for keyword phrases")
+    normalize: bool = Field(False, description="Normalize candidates to lowercase")
 
 
 class KeysInput(BaseModel):
@@ -44,11 +46,13 @@ class KeysCommand(AbstractBaseCommand):
         """Pre-load the configured extraction model."""
         if self._config.model.lower() == "keybert" and self._kb is None:
             import keybert
-            self._kb = keybert.KeyBERT("all-MiniLM-L6-v2")
+            self._kb = keybert.KeyBERT(load_embedder("all-minilm"))
 
     def operation(self, data: KeysInput, params: KeysParams=None) -> KeysOutput:
         """Extract keywords from the supplied text."""
         p = params or KeysParams()
+        if p.normalize:
+            return KeysOutput(keywords=list({kw.lower() for kw, _ in self._extract(data.content, p)}))
         return KeysOutput(keywords=[kw for kw, _ in self._extract(data.content, p)])
 
     def _extract(self, content: str, params: KeysParams) -> list:
@@ -56,7 +60,7 @@ class KeysCommand(AbstractBaseCommand):
         if self._config.model.lower() == "keybert":
             if self._kb is None:
                 import keybert
-                self._kb = keybert.KeyBERT("all-MiniLM-L6-v2")
+                self._kb = keybert.KeyBERT(load_embedder("all-minilm"))
             return self._kb.extract_keywords(
                 content,
                 keyphrase_ngram_range=(1, params.ngram_max),
@@ -64,12 +68,13 @@ class KeysCommand(AbstractBaseCommand):
                 top_n=params.top_n,
                 use_mmr=self._config.use_mmr,
             )
-        import yake
-        extractor = yake.KeywordExtractor(
-            lan=self._config.language,
-            n=params.ngram_max,
-            dedupLim=self._config.dedup_lim,
-            dedupFunc=self._config.dedup_func,
-            top=params.top_n,
-        )
-        return extractor.extract_keywords(content)
+        else:
+            import yake
+            extractor = yake.KeywordExtractor(
+                lan=self._config.language,
+                n=params.ngram_max,
+                dedupLim=self._config.dedup_lim,
+                dedupFunc=self._config.dedup_func,
+                top=params.top_n,
+            )
+            return extractor.extract_keywords(content)

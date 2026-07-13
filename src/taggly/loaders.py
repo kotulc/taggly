@@ -14,7 +14,7 @@ GEN_MODELS = {
     "gemma-2b": "google/gemma-4-E2B-it",
     "gemma-4b": "google/gemma-4-E4B-it",
     "gemma-12b": "google/gemma-4-12B-it",
-    "smollm-135m": "HuggingFaceTB/SmolLM2-135M-Instruct",
+    "qwen-0.8b": "Qwen/Qwen3.5-0.8B",
 }
 
 # Models that require accepting the HF license and an access token to download
@@ -76,11 +76,19 @@ def generate(model: str, messages: list, max_tokens: int) -> str:
     return result[-1]["content"] if isinstance(result, list) else result
 
 
+def from_hub(loader, name: str, **kwargs):
+    """Call a hub model loader cache-first so flaky networks can't break cached model loads."""
+    try:
+        return loader(name, local_files_only=True, **kwargs)
+    except OSError:  # not fully cached — fetch from the hub
+        return loader(name, **kwargs)
+
+
 @lru_cache(maxsize=None)
 def load_embedder(name: str):
     """Load and cache a SentenceTransformer by short name or full identifier."""
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBED_MODELS.get(name.lower(), name))
+    return from_hub(SentenceTransformer, EMBED_MODELS.get(name.lower(), name))
 
 
 @lru_cache(maxsize=None)
@@ -91,10 +99,12 @@ def load_generator(name: str):
         return _ExternalGenerator(_LLM_ENDPOINT, model, _LLM_TIMEOUT)
     from transformers import pipeline
     from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForMultimodalLM
+    from transformers.utils import logging as hf_logging
+    hf_logging.set_verbosity(hf_logging.CRITICAL)  # silence advisory model-load/generation chatter
     hf_name = GEN_MODELS.get(name.lower(), name)
-    tokenizer = AutoTokenizer.from_pretrained(hf_name, clean_up_tokenization_spaces=False)
+    tokenizer = from_hub(AutoTokenizer.from_pretrained, hf_name, clean_up_tokenization_spaces=False)
     try:
-        model = AutoModelForMultimodalLM.from_pretrained(hf_name)
-    except ValueError:  # text-only models (e.g. smollm-135m) use the causal LM auto class
-        model = AutoModelForCausalLM.from_pretrained(hf_name)
+        model = from_hub(AutoModelForCausalLM.from_pretrained, hf_name)
+    except ValueError:  # multimodal models (e.g. gemma-4) are not registered as causal LMs
+        model = from_hub(AutoModelForMultimodalLM.from_pretrained, hf_name)
     return pipeline("text-generation", model=model, tokenizer=tokenizer, clean_up_tokenization_spaces=False)

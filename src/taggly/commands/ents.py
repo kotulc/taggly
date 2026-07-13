@@ -7,11 +7,12 @@ from taggly.models.base import AbstractBaseCommand
 
 
 class EntsConfig(BaseModel):
-    language: str = Field("en_core_web_lg", description="spaCy model name for entity extraction")
+    language: str = Field("en_core_web_sm", description="spaCy model name for entity extraction")
 
 
 class EntsParams(BaseModel):
     top_n: int = Field(10, description="Maximum number of entities to return")
+    normalize: bool = Field(False, description="Normalize candidates to lowercase")
 
 
 class EntsInput(BaseModel):
@@ -49,5 +50,8 @@ class EntsCommand(AbstractBaseCommand):
         p = params or EntsParams()
         if self._spacy is None:
             self.warmup()
-        entities = {ent.text.strip() for ent in self._spacy(data.content).ents}
+        if p.normalize:
+            entities = {ent.text.strip().lower() for ent in self._spacy(data.content).ents}
+        else:
+            entities = {ent.text.strip() for ent in self._spacy(data.content).ents}
         return EntsOutput(entities=list(entities)[:p.top_n])

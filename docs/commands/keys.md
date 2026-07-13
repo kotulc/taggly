@@ -21,20 +21,19 @@ curl -X POST "http://localhost:8000/keys?top_n=10" \
 ## CLI
 
 ```
-Usage: taggly keys [OPTIONS] CONTENT                                          
-                                                                               
- Extract keywords from the supplied text.                                      
-                                                                               
-┌─ Arguments ─────────────────────────────────────────────────────────────────┐
-│ *    content      TEXT  [required]                                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --top-n            INTEGER  Maximum number of keywords to return            │
-│                             [default: 10]                                   │
-│ --ngram-max        INTEGER  Maximum n-gram size for keyword phrases         │
-│                             [default: 1]                                    │
-│ --help                      Show this message and exit.                     │
-└─────────────────────────────────────────────────────────────────────────────┘
+Usage: taggly keys [OPTIONS] CONTENT                                                                                                                                                     
+                                                                                                                                                                                          
+ Extract keywords from the supplied text.                                                                                                                                                 
+                                                                                                                                                                                          
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    content      TEXT  [required]                                                                                                                                                     │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --top-n                          INTEGER  Maximum number of keywords to return [default: 10]                                                                                           │
+│ --ngram-max                      INTEGER  Maximum n-gram size for keyword phrases [default: 1]                                                                                         │
+│ --normalize    --no-normalize             Normalize candidates to lowercase [default: no-normalize]                                                                                    │
+│ --help                                    Show this message and exit.                                                                                                                  │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## API
@@ -49,7 +48,7 @@ Usage: taggly keys [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters**: `top_n`, `ngram_max`
+**Query parameters**: `top_n`, `ngram_max`, `normalize`
 
 **Response**
 
@@ -90,3 +89,4 @@ Usage: taggly keys [OPTIONS] CONTENT
 |-------|------|----------|---------|-------------|
 | `top_n` | integer | no | 10 | Maximum number of keywords to return |
 | `ngram_max` | integer | no | 1 | Maximum n-gram size for keyword phrases |
+| `normalize` | boolean | no | False | Normalize candidates to lowercase |

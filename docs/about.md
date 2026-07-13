@@ -42,7 +42,7 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 
 Semantic commands (`score`, `rank`) share embedding models — `all-minilm`,
 `bge-base`, `bge-large`. Generative commands (`desc`, `ext`) default to the compact ungated
-`smollm-135m` (SmolLM2-135M-Instruct), which needs no HuggingFace token; the gated Gemma
+`qwen-0.8b` (Qwen3.5-0.8B), which needs no HuggingFace token; the gated Gemma
 models (`gemma-2b`, `gemma-4b`, `gemma-12b`) can be configured for higher quality.
 
 Per-command reference docs are in [`docs/commands/`](docs/commands/); the framework design is
@@ -253,7 +253,7 @@ authenticated providers, set up a local proxy that injects credentials, or let u
 can add API key support.
 
 If `LLM_ENDPOINT` is not set, `desc` and `ext` use the configured local model (`config/config.yaml`
-`desc.model` / `ext.model`, default `smollm-135m`) and download it locally on first use.
+`desc.model` / `ext.model`, default `qwen-0.8b`) and download it locally on first use.
 
 ### Priority chains
 

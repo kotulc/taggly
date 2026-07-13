@@ -5,15 +5,13 @@ from pydantic import BaseModel, Field
 from taggly.loaders import generate, load_generator
 from taggly.models.base import AbstractBaseCommand
 
-# Prompt includes a one-shot worked example — small models copy a demonstrated
-# format far more reliably than they follow format descriptions.
-PROMPT = "Describe the following text in a single short sentence:\n\n{}"
-EXAMPLE_TEXT = "Marie Curie won the Nobel Prize in Paris."
-EXAMPLE_REPLY = "A note about Marie Curie receiving the Nobel Prize in Paris."
+# Asking what the text is about (rather than to describe it) keeps small
+# models from answering with a near-restatement of the input.
+PROMPT = "What is the following text about? Answer in as few words as possible.\n\nText: {}"
 
 
 class DescConfig(BaseModel):
-    model: str = Field("smollm-135m", description="Generative model: 'smollm-135m', 'gemma-2b', 'gemma-4b', or 'gemma-12b'")
+    model: str = Field("qwen-0.8b", description="Generative model: 'qwen-0.8b', 'gemma-2b', 'gemma-4b', or 'gemma-12b'")
     max_tokens: int = Field(128, description="Maximum number of tokens to generate")
 
 
@@ -42,10 +40,6 @@ class DescCommand(AbstractBaseCommand):
 
     def operation(self, data: DescInput, params: BaseModel=None) -> DescOutput:
         """Generate a concise description of the supplied text."""
-        messages = [
-            {"role": "user", "content": PROMPT.format(EXAMPLE_TEXT)},
-            {"role": "assistant", "content": EXAMPLE_REPLY},
-            {"role": "user", "content": PROMPT.format(data.content)},
-        ]
+        messages = [{"role": "user", "content": PROMPT.format(data.content)}]
         text = generate(self._config.model, messages, self._config.max_tokens)
         return DescOutput(description=text.strip())

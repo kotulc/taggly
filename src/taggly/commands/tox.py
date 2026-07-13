@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 
+from taggly.loaders import from_hub
 from taggly.models.base import AbstractBaseCommand
 
 
@@ -31,8 +32,10 @@ class ToxCommand(AbstractBaseCommand):
     def warmup(self) -> None:
         """Pre-load the toxic-bert pipeline."""
         if self._pipe is None:
-            from transformers import pipeline
-            self._pipe = pipeline("text-classification", model="unitary/toxic-bert")
+            from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+            model = from_hub(AutoModelForSequenceClassification.from_pretrained, "unitary/toxic-bert")
+            tokenizer = from_hub(AutoTokenizer.from_pretrained, "unitary/toxic-bert")
+            self._pipe = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
     def operation(self, data: ToxInput, params: ToxParams=None) -> ToxOutput:
         """Compute toxicity score for the supplied text."""

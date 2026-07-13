@@ -428,3 +428,25 @@ class TestProbeExternalLlm:
             mock_get.return_value = mock_response
 
             _probe_llm("http://localhost:1234", "my-model")
+
+
+class TestFromHub:
+    """Tests for the cache-first from_hub loader."""
+
+    def test_from_hub_prefers_local_cache(self):
+        """from_hub loads with local_files_only and never hits the network when cached."""
+        from taggly.loaders import from_hub
+
+        loader = Mock(return_value="model")
+
+        assert from_hub(loader, "org/name", trust=True) == "model"
+        loader.assert_called_once_with("org/name", local_files_only=True, trust=True)
+
+    def test_from_hub_downloads_when_not_cached(self):
+        """from_hub falls back to a hub download when the local cache misses."""
+        from taggly.loaders import from_hub
+
+        loader = Mock(side_effect=[OSError("not cached"), "model"])
+
+        assert from_hub(loader, "org/name") == "model"
+        loader.assert_called_with("org/name")

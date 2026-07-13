@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 
+from taggly.loaders import from_hub
 from taggly.models.base import AbstractBaseCommand
 
 
@@ -34,8 +35,8 @@ class SpamCommand(AbstractBaseCommand):
         if self._tokenizer is None:
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
             model_id = "AntiSpamInstitute/spam-detector-bert-MoE-v2.2"
-            self._tokenizer = AutoTokenizer.from_pretrained(model_id)
-            self._classifier = AutoModelForSequenceClassification.from_pretrained(model_id)
+            self._tokenizer = from_hub(AutoTokenizer.from_pretrained, model_id)
+            self._classifier = from_hub(AutoModelForSequenceClassification.from_pretrained, model_id)
 
     def operation(self, data: SpamInput, params: SpamParams=None) -> SpamOutput:
         """Compute spam score for the supplied text."""

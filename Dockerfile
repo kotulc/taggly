@@ -14,7 +14,7 @@ RUN python -c "import tomllib; [print(d) for d in tomllib.load(open('pyproject.t
 # Pre-download models so the container serves without network access; the build fails if any
 # are unavailable. All bundled models are public — no HF token required.
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')" \
-    && python -c "from huggingface_hub import snapshot_download; snapshot_download('HuggingFaceTB/SmolLM2-135M-Instruct', allow_patterns=['*.json', '*.txt', '*.safetensors'])"
+    && python -c "from huggingface_hub import snapshot_download; snapshot_download('Qwen/Qwen3.5-0.8B', allow_patterns=['*.json', '*.txt', '*.safetensors'])"
 RUN python -m spacy download en_core_web_sm && rm -rf /root/.cache/pip
 
 COPY . .

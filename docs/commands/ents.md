@@ -21,17 +21,18 @@ curl -X POST "http://localhost:8000/ents?top_n=10" \
 ## CLI
 
 ```
-Usage: taggly ents [OPTIONS] CONTENT                                          
-                                                                               
- Extract named entities from the supplied text.                                
-                                                                               
-┌─ Arguments ─────────────────────────────────────────────────────────────────┐
-│ *    content      TEXT  [required]                                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --top-n        INTEGER  Maximum number of entities to return [default: 10]  │
-│ --help                  Show this message and exit.                         │
-└─────────────────────────────────────────────────────────────────────────────┘
+Usage: taggly ents [OPTIONS] CONTENT                                                                                                                                                     
+                                                                                                                                                                                          
+ Extract named entities from the supplied text.                                                                                                                                           
+                                                                                                                                                                                          
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    content      TEXT  [required]                                                                                                                                                     │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --top-n                          INTEGER  Maximum number of entities to return [default: 10]                                                                                           │
+│ --normalize    --no-normalize             Normalize candidates to lowercase [default: no-normalize]                                                                                    │
+│ --help                                    Show this message and exit.                                                                                                                  │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## API
@@ -46,7 +47,7 @@ Usage: taggly ents [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters**: `top_n`
+**Query parameters**: `top_n`, `normalize`
 
 **Response**
 
@@ -81,3 +82,4 @@ Usage: taggly ents [OPTIONS] CONTENT
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `top_n` | integer | no | 10 | Maximum number of entities to return |
+| `normalize` | boolean | no | False | Normalize candidates to lowercase |

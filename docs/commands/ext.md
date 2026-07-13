@@ -21,25 +21,18 @@ curl -X POST "http://localhost:8000/ext?concepts=concepts, entities, topics" \
 ## CLI
 
 ```
-Usage: taggly ext [OPTIONS] CONTENT                                           
-                                                                               
- Extract typed concepts from the supplied text.                                
-                                                                               
-┌─ Arguments ─────────────────────────────────────────────────────────────────┐
-│ *    content      TEXT  [required]                                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --concepts                         TEXT  Comma-separated concept categories │
-│                                          to extract (spaces around commas   │
-│                                          are fine)                          │
-│                                          [default: concepts, entities,      │
-│                                          topics]                            │
-│ --structured    --no-structured          Extract all concepts in one        │
-│                                          structured JSON generation instead │
-│                                          of one list generation per concept │
-│                                          [default: no-structured]           │
-│ --help                                   Show this message and exit.        │
-└─────────────────────────────────────────────────────────────────────────────┘
+Usage: taggly ext [OPTIONS] CONTENT                                                                                                                                                      
+                                                                                                                                                                                          
+ Extract typed concepts from the supplied text.                                                                                                                                           
+                                                                                                                                                                                          
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    content      TEXT  [required]                                                                                                                                                     │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --concepts                       TEXT  Comma-separated concept categories to extract (spaces around commas are fine) [default: concepts, entities, topics]                             │
+│ --normalize    --no-normalize          Normalize candidates to lowercase [default: no-normalize]                                                                                       │
+│ --help                                 Show this message and exit.                                                                                                                     │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## API
@@ -54,7 +47,7 @@ Usage: taggly ext [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters**: `concepts`, `structured`
+**Query parameters**: `concepts`, `normalize`
 
 **Response**
 
@@ -80,7 +73,7 @@ Usage: taggly ext [OPTIONS] CONTENT
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `model` | string | no | smollm-135m | Generative model: 'smollm-135m', 'gemma-2b', 'gemma-4b', or 'gemma-12b' |
+| `model` | string | no | qwen-0.8b | Generative model: 'qwen-0.8b', 'gemma-2b', 'gemma-4b', or 'gemma-12b' |
 | `max_tokens` | integer | no | 256 | Maximum number of tokens to generate |
 
 ## Params
@@ -88,4 +81,4 @@ Usage: taggly ext [OPTIONS] CONTENT
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `concepts` | string | no | concepts, entities, topics | Comma-separated concept categories to extract (spaces around commas are fine) |
-| `structured` | boolean | no | False | Extract all concepts in one structured JSON generation instead of one list generation per concept |
+| `normalize` | boolean | no | False | Normalize candidates to lowercase |

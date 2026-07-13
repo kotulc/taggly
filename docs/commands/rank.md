@@ -21,21 +21,19 @@ curl -X POST "http://localhost:8000/rank?top_n=3" \
 ## CLI
 
 ```
-Usage: taggly rank [OPTIONS] QUERY CANDIDATES...                              
-                                                                               
- Rank candidates by relevance to the query while maximizing diversity.         
-                                                                               
-┌─ Arguments ─────────────────────────────────────────────────────────────────┐
-│ *    query           TEXT           [required]                              │
-│ *    candidates      CANDIDATES...  [required]                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-┌─ Options ───────────────────────────────────────────────────────────────────┐
-│ --top-n            INTEGER  Number of candidates to return [default: 3]     │
-│ --diversity        FLOAT    MMR diversity weight (0=pure relevance, 1=pure  │
-│                             diversity)                                      │
-│                             [default: 0.5]                                  │
-│ --help                      Show this message and exit.                     │
-└─────────────────────────────────────────────────────────────────────────────┘
+Usage: taggly rank [OPTIONS] QUERY CANDIDATES...                                                                                                                                         
+                                                                                                                                                                                          
+ Rank candidates by relevance to the query while maximizing diversity.                                                                                                                    
+                                                                                                                                                                                          
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    query           TEXT           [required]                                                                                                                                         │
+│ *    candidates      CANDIDATES...  [required]                                                                                                                                         │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --top-n            INTEGER  Number of candidates to return [default: 3]                                                                                                                │
+│ --diversity        FLOAT    MMR diversity weight (0=pure relevance, 1=pure diversity) [default: 0.5]                                                                                   │
+│ --help                      Show this message and exit.                                                                                                                                │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## API

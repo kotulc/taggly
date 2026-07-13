@@ -4,7 +4,7 @@
 
 Every push to `main` runs the test suite and, when it passes, builds and publishes an image
 to `ghcr.io/kotulc/taggly`. The image bundles all runtime models — `all-MiniLM-L6-v2`
-(embeddings), spaCy `en_core_web_sm` (entities), and `SmolLM2-135M-Instruct` (generation) —
+(embeddings), spaCy `en_core_web_sm` (entities), and `Qwen3.5-0.8B` (generation) —
 so the container works fully offline with no HuggingFace token:
 
 ```bash

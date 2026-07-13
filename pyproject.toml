@@ -12,7 +12,7 @@ dependencies = [
   "pydantic",
   "pydantic-settings",
   "torch",
-  "transformers",
+  "transformers>=5.13",  # qwen3_5 support; earlier 5.x leak debug prints on load
   "sentence-transformers",
   "keybert",
   "spacy",

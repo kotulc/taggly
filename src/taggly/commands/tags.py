@@ -12,10 +12,11 @@ from taggly.models.base import AbstractBaseCommand
 
 
 class TagsParams(BaseModel):
-    concepts: str = Field("concepts, entities, topics", description="Comma-separated concept categories to extract (spaces around commas are fine)") 
+    concepts: str = Field("concepts, entities, topics", description="Comma-separated concept categories to extract") 
     max_ngram: int = Field(2, description="Maximum candidate tag word length")
     top_n: int = Field(10, description="Maximum number of tags to return per type")
     rank: bool = Field(False, description="Rank candidates by MMR for relevance and diversity")
+    normalize: bool = Field(True, description="Normalize candidates to lowercase")
 
 
 class TagsInput(BaseModel):
@@ -47,26 +48,24 @@ class TagsCommand(AbstractBaseCommand):
         p = params or TagsParams()
 
         # Start with ext concepts dict (entities, topics, concepts, …)
-        output: Dict[str, List[str]] = dict(
-            self._ext.operation(ExtInput(content=data.content), ExtParams(concepts=p.concepts)).concepts
-        )
+        ext_params = ExtParams(concepts=p.concepts, normalize=p.normalize)
+        output = dict(self._ext.operation(ExtInput(content=data.content), ext_params).concepts)
 
         # Merge ents named entities into the entities group, deduplicated
-        ents = self._ents.operation(EntsInput(content=data.content), EntsParams(top_n=p.top_n)).entities
+        ents_params = EntsParams(top_n=p.top_n, normalize=p.normalize)
+        ents = self._ents.operation(EntsInput(content=data.content), ents_params).entities
         output["entities"] = list(dict.fromkeys(output.get("entities", []) + ents))
 
         # Add keyword group
-        output["keywords"] = self._keys.operation(
-            KeysInput(content=data.content), KeysParams(top_n=p.top_n, ngram_max=p.max_ngram)
-        ).keywords
+        keys_params = KeysParams(top_n=p.top_n, ngram_max=p.max_ngram, normalize=p.normalize)
+        output["keywords"] = self._keys.operation(KeysInput(content=data.content), keys_params).keywords
 
         # Combine all unique values for scoring or ranking
         all_tags = list(dict.fromkeys(v for vals in output.values() for v in vals))
 
         if p.rank and all_tags:
-            output["ranked"] = self._rank.operation(
-                RankInput(query=data.content, candidates=all_tags), RankParams(top_n=p.top_n)
-            ).ranked
+            rank_params = RankParams(top_n=p.top_n)
+            output["ranked"] = self._rank.operation(RankInput(query=data.content, candidates=all_tags), rank_params).ranked
         elif all_tags:
             scores = self._score.operation(ScoreInput(query=data.content, candidates=all_tags)).scores
             output["scored"] = [t for _, t in sorted(zip(scores, all_tags), reverse=True)][:p.top_n]
