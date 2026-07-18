@@ -10,7 +10,7 @@ so the container works fully offline with no HuggingFace token:
 ```bash
 docker run -p 8000:8000 ghcr.io/kotulc/taggly        # API server on :8000
 
-docker run --rm ghcr.io/kotulc/taggly taggly keys "natural language processing"  # one-off CLI
+docker run --rm ghcr.io/kotulc/taggly taggly key "natural language processing"  # one-off CLI
 ```
 
 The image sets `HF_HUB_OFFLINE=1` to serve the bundled models without probing huggingface.co.

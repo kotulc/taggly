@@ -3,7 +3,7 @@
 # Only Config fields are supported (system-level settings).
 # Per-call options are set via CLI flags or API query params.
 
-keys:
+key:
   model: keybert           # 'yake' or 'keybert'
   language: en
   dedup_lim: 0.9
@@ -11,7 +11,7 @@ keys:
   stop_words: english
   use_mmr: false
 
-ents:
+ent:
   language: en_core_web_sm  # any installed spaCy model name
 
 polar:

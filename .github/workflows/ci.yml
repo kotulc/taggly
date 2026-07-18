@@ -60,7 +60,7 @@ jobs:
       - name: Smoke test image offline
         run: |
           docker run --network none --rm ${{ env.IMAGE }}:${{ github.sha }} \
-            taggly keys "natural language processing is a subfield of AI"
+            taggly key "natural language processing is a subfield of AI"
           docker run --network none --rm ${{ env.IMAGE }}:${{ github.sha }} \
             taggly desc "Python is a programming language"
 

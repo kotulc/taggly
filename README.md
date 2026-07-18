@@ -31,8 +31,8 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 
 | Command | Description | Config (system) | Params (per-call) |
 |---------|-------------|-----------------|-------------------|
-| `keys`   | Keyword extraction | `model`, `language`, `dedup_*`, `stop_words`, `use_mmr` | `top_n`, `ngram_max` |
-| `ents`   | Named entity extraction | `language` | `top_n` |
+| `key`    | Keyword extraction | `model`, `language`, `dedup_*`, `stop_words`, `use_mmr` | `top_n`, `ngram_max` |
+| `ent`    | Named entity extraction | `language` | `top_n` |
 | `polar`  | Polarity sentiment analysis | `model` | — |
 | `spam`   | Spam detection scoring | — | `threshold` |
 | `tox`    | Toxicity scoring | — | `threshold` |
@@ -40,7 +40,7 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 | `ext`    | Typed concept extraction via a language model | `model`, `max_tokens` | `concepts`, `structured` |
 | `score`  | Semantic similarity scores (cosine) | `model` | — |
 | `rank`   | Maximal Marginal Relevance ranking | `model` | `top_n`, `diversity` |
-| `tags`   | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank` |
+| `tag`    | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank`, `score` |
 
 Semantic commands (`score`, `rank`) share embedding models — `all-minilm`,
 `bge-base`, `bge-large`. Generative commands (`desc`, `ext`) default to the compact ungated
@@ -54,12 +54,12 @@ described in [`docs/framework.md`](docs/framework.md).
 
 ```bash
 taggly --help
-taggly keys --help
+taggly key --help
 
-taggly keys "natural language processing is a subfield of AI"
+taggly key "natural language processing is a subfield of AI"
 # {"keywords": ["natural language processing", "subfield", "AI"]}
 
-taggly keys "natural language processing" --top-n 5
+taggly key "natural language processing" --top-n 5
 # {"keywords": [...]}
 
 taggly polar "I love this product!"
@@ -87,13 +87,13 @@ taggly start
 The server starts at `http://127.0.0.1:8000`. Interactive docs: `http://127.0.0.1:8000/docs`
 
 ```bash
-curl -X POST http://127.0.0.1:8000/keys \
+curl -X POST http://127.0.0.1:8000/key \
   -H "Content-Type: application/json" \
   -d '{"content": "natural language processing is a subfield of AI"}'
 # {"keywords": ["natural language processing", "subfield", "AI"]}
 
 # Override Params per-request via query params:
-curl -X POST "http://127.0.0.1:8000/keys?top_n=5" \
+curl -X POST "http://127.0.0.1:8000/key?top_n=5" \
   -H "Content-Type: application/json" \
   -d '{"content": "natural language processing is a subfield of AI"}'
 ```
@@ -108,7 +108,7 @@ of loading models locally. This avoids slow initialization on every CLI invocati
 taggly start
 
 # Terminal 2 — CLI auto-delegates; no local model load
-taggly keys "natural language processing"  # → [keys] api
+taggly key "natural language processing"  # → [key] api
 ```
 
 The CLI prints `[command] api` to stderr when a request is handled by the API server.
@@ -120,12 +120,12 @@ startup so the first request is fast:
 
 ```bash
 # .env
-WARMUP='["keys", "ext", "score"]'
+WARMUP='["key", "ext", "score"]'
 ```
 
 ```bash
 taggly start
-# [keys] loading model...
+# [key] loading model...
 # [ext] loading model...
 # [score] loading model...
 # All models loaded.
@@ -161,7 +161,7 @@ If a model is unavailable, taggly reports it clearly:
 
 ```bash
 taggly docs
-# docs/about.md, docs/commands/keys.md, docs/commands/ents.md, ...
+# docs/about.md, docs/commands/key.md, docs/commands/ent.md, ...
 ```
 
 ## Configuration
@@ -190,7 +190,7 @@ request. Edit `config/config.yaml` to change them without touching code:
 
 ```yaml
 # config/config.yaml
-keys:
+key:
   model: yake          # switch from keybert to yake for all requests
 
 ext:
@@ -266,9 +266,9 @@ System:     config/config.yaml                →  Config field default
 
 ```bash
 # Params: top_n is per-call — CLI flag overrides the default
-taggly keys "machine learning" --top-n 3
+taggly key "machine learning" --top-n 3
 
 # Config: model is system-level — set in config/config.yaml, not per-call
-# config/config.yaml: keys: { model: yake }
-taggly keys "machine learning"  # uses yake as configured
+# config/config.yaml: key: { model: yake }
+taggly key "machine learning"  # uses yake as configured
 ```

@@ -41,7 +41,7 @@ Config fields are system-level decisions a deployment makes once. Params are per
 options the user can override every request without restarting anything.
 
 Commands that need neither declare neither — `spam` and `tox` have only `Params`, `score`
-and `desc` have only `Config`, and commands like `keys` have both.
+and `desc` have only `Config`, and commands like `key` have both.
 
 ## Convention over configuration
 
@@ -61,7 +61,7 @@ generation never touch a model.
 
 - **`warmup()`** lets a command pre-load its model so the first real request isn't slow.
 - Shared models live in [`loaders.py`](../src/taggly/loaders.py) behind `@lru_cache`, so
-  `score`, `rank`, `topics`, and `tags` all share one embedding model instance.
+  `score`, `rank`, `topics`, and `tag` all share one embedding model instance.
 
 ## Per-call options with a clear priority
 
@@ -88,16 +88,16 @@ zero duplicated handling.
 
 ## Composability
 
-Commands are small, single-purpose, and compose into pipelines. The `tags` command is
-an example orchestrator: it calls `keys`, `ents`, `ext`, `score`, and `rank` as first-class
+Commands are small, single-purpose, and compose into pipelines. The `tag` command is
+an example orchestrator: it calls `key`, `ent`, `ext`, `score`, and `rank` as first-class
 objects — no special wiring, just method calls on the same command instances:
 
 ```python
-class TagsCommand(AbstractBaseCommand):
+class TagCommand(AbstractBaseCommand):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._keys = KeysCommand(config=KeysConfig(model="yake"))
-        self._ents = EntsCommand()
+        self._key = KeyCommand(config=KeyConfig(model="yake"))
+        self._ent = EntCommand()
         self._rank = RankCommand()
 ```
 

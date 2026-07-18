@@ -1,4 +1,4 @@
-"""keys command: Extract keywords from the supplied text."""
+"""key command: Extract keywords from the supplied text."""
 
 from typing import List
 from pydantic import BaseModel, Field
@@ -7,7 +7,7 @@ from taggly.loaders import load_embedder
 from taggly.models.base import AbstractBaseCommand
 
 
-class KeysConfig(BaseModel):
+class KeyConfig(BaseModel):
     model: str = Field("keybert", description="Extraction model: 'yake' or 'keybert'")
     language: str = Field("en", description="Language code for YAKE stop-word filtering")
     dedup_lim: float = Field(0.9, description="YAKE deduplication similarity threshold (0–1)")
@@ -16,30 +16,30 @@ class KeysConfig(BaseModel):
     use_mmr: bool = Field(False, description="Use Maximal Marginal Relevance for KeyBERT diversity")
 
 
-class KeysParams(BaseModel):
+class KeyParams(BaseModel):
     top_n: int = Field(10, description="Maximum number of keywords to return")
     ngram_max: int = Field(1, description="Maximum n-gram size for keyword phrases")
     normalize: bool = Field(False, description="Normalize candidates to lowercase")
 
 
-class KeysInput(BaseModel):
+class KeyInput(BaseModel):
     content: str = Field(..., description="A text string to extract keywords from.")
 
 
-class KeysOutput(BaseModel):
+class KeyOutput(BaseModel):
     keywords: List[str] = Field(..., description="The list of extracted keywords.")
 
 
-class KeysCommand(AbstractBaseCommand):
-    name = "keys"
-    Config = KeysConfig
-    Params = KeysParams
-    Input = KeysInput
-    Output = KeysOutput
+class KeyCommand(AbstractBaseCommand):
+    name = "key"
+    Config = KeyConfig
+    Params = KeyParams
+    Input = KeyInput
+    Output = KeyOutput
 
-    def __init__(self, config: KeysConfig=None, **kwargs):
+    def __init__(self, config: KeyConfig=None, **kwargs):
         super().__init__(**kwargs)
-        self._config = config if config is not None else KeysConfig()
+        self._config = config if config is not None else KeyConfig()
         self._kb = None  # cached KeyBERT model — only loaded on first local use
 
     def warmup(self) -> None:
@@ -48,14 +48,14 @@ class KeysCommand(AbstractBaseCommand):
             import keybert
             self._kb = keybert.KeyBERT(load_embedder("all-minilm"))
 
-    def operation(self, data: KeysInput, params: KeysParams=None) -> KeysOutput:
+    def operation(self, data: KeyInput, params: KeyParams=None) -> KeyOutput:
         """Extract keywords from the supplied text."""
-        p = params or KeysParams()
+        p = params or KeyParams()
         if p.normalize:
-            return KeysOutput(keywords=list({kw.lower() for kw, _ in self._extract(data.content, p)}))
-        return KeysOutput(keywords=[kw for kw, _ in self._extract(data.content, p)])
+            return KeyOutput(keywords=list({kw.lower() for kw, _ in self._extract(data.content, p)}))
+        return KeyOutput(keywords=[kw for kw, _ in self._extract(data.content, p)])
 
-    def _extract(self, content: str, params: KeysParams) -> list:
+    def _extract(self, content: str, params: KeyParams) -> list:
         """Run extraction using system config for model settings, params for output controls."""
         if self._config.model.lower() == "keybert":
             if self._kb is None:
