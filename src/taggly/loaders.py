@@ -78,6 +78,8 @@ def generate(model: str, messages: list, max_tokens: int) -> str:
 
 def from_hub(loader, name: str, **kwargs):
     """Call a hub model loader cache-first so flaky networks can't break cached model loads."""
+    from transformers.utils import logging as hf_logging
+    hf_logging.set_verbosity(hf_logging.CRITICAL)  # silence advisory model-load chatter (e.g. LOAD REPORT)
     try:
         return loader(name, local_files_only=True, **kwargs)
     except OSError:  # not fully cached — fetch from the hub
@@ -99,8 +101,6 @@ def load_generator(name: str):
         return _ExternalGenerator(_LLM_ENDPOINT, model, _LLM_TIMEOUT)
     from transformers import pipeline
     from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForMultimodalLM
-    from transformers.utils import logging as hf_logging
-    hf_logging.set_verbosity(hf_logging.CRITICAL)  # silence advisory model-load/generation chatter
     hf_name = GEN_MODELS.get(name.lower(), name)
     tokenizer = from_hub(AutoTokenizer.from_pretrained, hf_name, clean_up_tokenization_spaces=False)
     try:
