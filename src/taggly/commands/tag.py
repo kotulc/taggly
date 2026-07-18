@@ -49,11 +49,11 @@ class TagCommand(AbstractBaseCommand):
         p = params or TagParams()
 
         # Start with ext concepts dict (entities, topics, concepts, …)
-        ext_params = ExtParams(concepts=p.concepts, normalize=p.normalize)
+        ext_params = ExtParams(concepts=p.concepts, max_ngram=p.max_ngram, normalize=p.normalize)
         output = dict(self._ext.operation(ExtInput(content=data.content), ext_params).concepts)
 
         # Merge ent named entities into the entities group, deduplicated
-        ent_params = EntParams(top_n=p.top_n, normalize=p.normalize)
+        ent_params = EntParams(top_n=p.top_n, max_ngram=p.max_ngram, normalize=p.normalize)
         ent = self._ent.operation(EntInput(content=data.content), ent_params).entities
         output["entities"] = list(dict.fromkeys(output.get("entities", []) + ent))
 

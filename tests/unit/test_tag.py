@@ -16,12 +16,20 @@ class _StubKey:
 
 
 class _StubEnt:
+    def __init__(self):
+        self.last_params = None
+
     def operation(self, data, params=None):
+        self.last_params = params
         return EntOutput(entities=["Python", "machine learning"])
 
 
 class _StubExt:
+    def __init__(self):
+        self.last_params = None
+
     def operation(self, data, params=None):
+        self.last_params = params
         return ExtOutput(concepts={"entities": ["Python"], "topics": ["NLP"], "concepts": []})
 
 
@@ -102,3 +110,17 @@ def test_tag_top_n_limits_scored():
     """top_n caps the combined scored list."""
     result = _cmd().operation(TagInput(content=_SAMPLE), TagParams(top_n=2, score=True))
     assert len(result.tags["scored"]) <= 2
+
+
+def test_tag_passes_max_ngram_to_ext():
+    """max_ngram is forwarded to the ext command so concept extraction stays bounded too."""
+    cmd = _cmd()
+    cmd.operation(TagInput(content=_SAMPLE), TagParams(max_ngram=3))
+    assert cmd._ext.last_params.max_ngram == 3
+
+
+def test_tag_passes_max_ngram_to_ent():
+    """max_ngram is forwarded to the ent command so entity extraction stays bounded too."""
+    cmd = _cmd()
+    cmd.operation(TagInput(content=_SAMPLE), TagParams(max_ngram=3))
+    assert cmd._ent.last_params.max_ngram == 3

@@ -30,6 +30,7 @@ Usage: taggly ent [OPTIONS] CONTENT
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ┌─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ --top-n                          INTEGER  Maximum number of entities to return [default: 10]                                                                                                        │
+│ --max-ngram                      INTEGER  Maximum candidate tag word length [default: 2]                                                                                                            │
 │ --normalize    --no-normalize             Normalize candidates to lowercase [default: no-normalize]                                                                                                 │
 │ --help                                    Show this message and exit.                                                                                                                               │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -47,7 +48,7 @@ Usage: taggly ent [OPTIONS] CONTENT
 }
 ```
 
-**Query parameters**: `top_n`, `normalize`
+**Query parameters**: `top_n`, `max_ngram`, `normalize`
 
 **Response**
 
@@ -82,4 +83,5 @@ Usage: taggly ent [OPTIONS] CONTENT
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `top_n` | integer | no | 10 | Maximum number of entities to return |
+| `max_ngram` | integer | no | 2 | Maximum candidate tag word length |
 | `normalize` | boolean | no | False | Normalize candidates to lowercase |

@@ -32,12 +32,12 @@ Commands separate **Config** (system-level, set at deploy time via `config/confi
 | Command | Description | Config (system) | Params (per-call) |
 |---------|-------------|-----------------|-------------------|
 | `key`    | Keyword extraction | `model`, `language`, `dedup_*`, `stop_words`, `use_mmr` | `top_n`, `ngram_max` |
-| `ent`    | Named entity extraction | `language` | `top_n` |
+| `ent`    | Named entity extraction | `language` | `top_n`, `max_ngram` |
 | `polar`  | Polarity sentiment analysis | `model` | — |
 | `spam`   | Spam detection scoring | — | `threshold` |
 | `tox`    | Toxicity scoring | — | `threshold` |
 | `desc`   | Text description via a language model | `model`, `max_tokens` | — |
-| `ext`    | Typed concept extraction via a language model | `model`, `max_tokens` | `concepts`, `structured` |
+| `ext`    | Typed concept extraction via a language model | `model`, `max_tokens` | `concepts`, `max_ngram`, `normalize` |
 | `score`  | Semantic similarity scores (cosine) | `model` | — |
 | `rank`   | Maximal Marginal Relevance ranking | `model` | `top_n`, `diversity` |
 | `tag`    | Combined typed tag extraction from all sources | — | `concepts`, `max_ngram`, `top_n`, `rank`, `score` |

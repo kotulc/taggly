@@ -12,6 +12,7 @@ class EntConfig(BaseModel):
 
 class EntParams(BaseModel):
     top_n: int = Field(10, description="Maximum number of entities to return")
+    max_ngram: int = Field(2, description="Maximum candidate tag word length")
     normalize: bool = Field(False, description="Normalize candidates to lowercase")
 
 
@@ -50,8 +51,14 @@ class EntCommand(AbstractBaseCommand):
         p = params or EntParams()
         if self._spacy is None:
             self.warmup()
+        texts = (self._truncate(ent.text.strip(), p.max_ngram) for ent in self._spacy(data.content).ents)
         if p.normalize:
-            entities = {ent.text.strip().lower() for ent in self._spacy(data.content).ents}
+            entities = {t.lower() for t in texts}
         else:
-            entities = {ent.text.strip() for ent in self._spacy(data.content).ents}
+            entities = set(texts)
         return EntOutput(entities=list(entities)[:p.top_n])
+
+    @staticmethod
+    def _truncate(text: str, max_ngram: int) -> str:
+        """Trim text to at most max_ngram words."""
+        return " ".join(text.split()[:max_ngram])

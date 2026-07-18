@@ -21,6 +21,7 @@ class ExtConfig(BaseModel):
 
 class ExtParams(BaseModel):
     concepts: str = Field("concepts, entities, topics", description="Comma-separated concept categories to extract (spaces around commas are fine)")
+    max_ngram: int = Field(2, description="Maximum candidate tag word length")
     normalize: bool = Field(False, description="Normalize candidates to lowercase")
 
 
@@ -55,6 +56,7 @@ class ExtCommand(AbstractBaseCommand):
         keys = [c.strip() for c in params.concepts.split(",") if c.strip()]
         text = self._generate(JSON_PROMPT.format(", ".join(keys), data.content))
         concepts = self._parse(text, keys)
+        concepts = {k: self._truncate(vals, params.max_ngram) for k, vals in concepts.items()}
         if params.normalize:
             concepts = {k: list({v.lower() for v in vals}) for k, vals in concepts.items()}
         return ExtOutput(concepts=concepts)
@@ -75,3 +77,8 @@ class ExtCommand(AbstractBaseCommand):
     def _strings(value) -> List[str]:
         """Keep only the string items of a parsed JSON value, dropping malformed shapes."""
         return list({i for i in value if isinstance(i, str)}) if isinstance(value, list) else []
+
+    @staticmethod
+    def _truncate(values: List[str], max_ngram: int) -> List[str]:
+        """Trim each candidate to at most max_ngram words, deduplicating collisions."""
+        return list(dict.fromkeys(" ".join(v.split()[:max_ngram]) for v in values))
