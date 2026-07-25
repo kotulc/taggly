@@ -450,3 +450,34 @@ class TestFromHub:
 
         assert from_hub(loader, "org/name") == "model"
         loader.assert_called_with("org/name")
+
+
+class TestGenerate:
+    """Tests for the shared greedy generate() helper."""
+
+    def test_generate_strips_think_blocks(self):
+        """generate removes leaked <think>…</think> wrappers from the reply."""
+        from taggly import loaders
+
+        def fake_generator(messages, generation_config=None, **kwargs):
+            return [{"generated_text": list(messages) + [
+                {"role": "assistant", "content": "<think>plan</think>\n{\"ok\": true}"}
+            ]}]
+
+        with patch.object(loaders, "load_generator", return_value=fake_generator):
+            assert loaders.generate("qwen-0.8b", [{"role": "user", "content": "hi"}], 64) == '{"ok": true}'
+
+    def test_generate_disables_thinking(self):
+        """generate asks the tokenizer to leave thinking mode off."""
+        from taggly import loaders
+
+        seen = {}
+
+        def fake_generator(messages, generation_config=None, **kwargs):
+            seen.update(kwargs)
+            return [{"generated_text": list(messages) + [{"role": "assistant", "content": "ok"}]}]
+
+        with patch.object(loaders, "load_generator", return_value=fake_generator):
+            loaders.generate("qwen-0.8b", [{"role": "user", "content": "hi"}], 64)
+
+        assert seen.get("tokenizer_encode_kwargs") == {"enable_thinking": False}

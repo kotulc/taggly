@@ -1,7 +1,9 @@
 """ext command: Extract typed concepts (entities, topics, relations) via a language model."""
 
 import json
+import re
 from typing import Dict, List
+
 from pydantic import BaseModel, Field
 
 from taggly.loaders import generate, load_generator
@@ -9,9 +11,14 @@ from taggly.models.base import AbstractBaseCommand
 
 JSON_PROMPT = (
     "Extract the following from the text as a JSON object with these keys: "
-    "{}. Each value is a list of short strings. "
+    "{}. Each value is a list of at most 10 short strings. "
     "Return only the JSON object.\n\nText: {}"
 )
+
+# Long inputs make small models emit truncated / noisy JSON that `_parse` would
+# otherwise swallow into empty groups. Stay under the observed ~2100-char cliff.
+_CHUNK_CHARS = 1800
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
 class ExtConfig(BaseModel):
@@ -54,9 +61,12 @@ class ExtCommand(AbstractBaseCommand):
         """Extract typed concepts from the supplied text."""
         params = params if params else ExtParams()
         keys = [c.strip() for c in params.concepts.split(",") if c.strip()]
-        text = self._generate(JSON_PROMPT.format(", ".join(keys), data.content))
-        concepts = self._parse(text, keys)
-        concepts = {k: self._truncate(vals, params.max_ngram) for k, vals in concepts.items()}
+        merged = {k: [] for k in keys}
+        for chunk in self._chunks(data.content):
+            text = self._generate(JSON_PROMPT.format(", ".join(keys), chunk))
+            for k, vals in self._parse(text, keys).items():
+                merged[k].extend(vals)
+        concepts = {k: self._truncate(vals, params.max_ngram) for k, vals in merged.items()}
         if params.normalize:
             concepts = {k: list({v.lower() for v in vals}) for k, vals in concepts.items()}
         return ExtOutput(concepts=concepts)
@@ -66,12 +76,58 @@ class ExtCommand(AbstractBaseCommand):
         return generate(self._config.model, [{"role": "user", "content": prompt}], self._config.max_tokens)
 
     def _parse(self, text: str, concepts: List[str]) -> Dict[str, List[str]]:
-        """Parse the JSON object from the model output, defaulting to empty lists."""
-        try:
-            parsed = json.loads(text[text.index("{"):text.rindex("}") + 1])
-        except (ValueError, json.JSONDecodeError):
-            parsed = {}
+        """Parse a JSON object with the requested keys from the model output."""
+        parsed = self._json_object(text, concepts)
         return {c: self._strings(parsed.get(c)) for c in concepts}
+
+    @staticmethod
+    def _json_object(text: str, preferred_keys: List[str] = None) -> dict:
+        """Return the first decodable JSON object, preferring ones with concept keys."""
+        cleaned = _THINK_BLOCK.sub("", text)
+        decoder = json.JSONDecoder()
+        fallback = {}
+        for i, ch in enumerate(cleaned):
+            if ch != "{":
+                continue
+            try:
+                obj, _ = decoder.raw_decode(cleaned, i)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            if preferred_keys and any(k in obj for k in preferred_keys):
+                return obj
+            if not fallback:
+                fallback = obj
+        return fallback
+
+    @staticmethod
+    def _chunks(text: str, max_chars: int = _CHUNK_CHARS) -> List[str]:
+        """Split long text into bounded chunks at paragraph/sentence/word boundaries."""
+        text = text.strip()
+        if not text:
+            return [""]
+        if len(text) <= max_chars:
+            return [text]
+        chunks: List[str] = []
+        start = 0
+        n = len(text)
+        while start < n:
+            end = min(start + max_chars, n)
+            if end < n:
+                window = text[start:end]
+                brk = window.rfind("\n\n")
+                if brk <= max_chars // 2:
+                    brk = window.rfind(". ")
+                if brk <= max_chars // 2:
+                    brk = window.rfind(" ")
+                if brk > max_chars // 2:
+                    end = start + brk + (2 if window.startswith("\n\n", brk) else 1)
+            piece = text[start:end].strip()
+            if piece:
+                chunks.append(piece)
+            start = end if end > start else start + max_chars
+        return chunks or [text[:max_chars]]
 
     @staticmethod
     def _strings(value) -> List[str]:

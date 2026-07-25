@@ -1,6 +1,10 @@
 """Cached loaders for the embedding and generative models shared across commands."""
 
+import re
 from functools import lru_cache
+
+# Qwen-style reasoning wrappers occasionally leak into the assistant reply.
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 # Short names mapped to full sentence-transformers identifiers for similarity commands
 EMBED_MODELS = {
@@ -67,13 +71,19 @@ def generate(model: str, messages: list, max_tokens: int) -> str:
     """Run one greedy chat generation and return the assistant reply text.
 
     Greedy decoding (do_sample=False) keeps small models on-task; their default
-    sampling settings tend to echo the prompt or ramble.
+    sampling settings tend to echo the prompt or ramble. Thinking mode is disabled
+    so reasoning models don't burn the token budget before producing the answer.
     """
     from transformers import GenerationConfig
     config = GenerationConfig(max_new_tokens=max_tokens, do_sample=False)
-    output = load_generator(model)(messages, generation_config=config)
+    output = load_generator(model)(
+        messages,
+        generation_config=config,
+        tokenizer_encode_kwargs={"enable_thinking": False},
+    )
     result = output[0]["generated_text"]
-    return result[-1]["content"] if isinstance(result, list) else result
+    text = result[-1]["content"] if isinstance(result, list) else result
+    return _THINK_BLOCK.sub("", text).strip()
 
 
 def from_hub(loader, name: str, **kwargs):
