@@ -1,10 +1,16 @@
 """key command: Extract keywords from the supplied text."""
 
-from typing import List
+import re
+from typing import List, Optional, Tuple
+
 from pydantic import BaseModel, Field
 
 from taggly.loaders import load_embedder
 from taggly.models.base import AbstractBaseCommand
+
+# Drop terms with no letters (pure digits / punctuation) or a single character.
+_HAS_LETTER = re.compile(r"[A-Za-z]")
+_EDGE_NOISE = re.compile(r"^[\W_]+|[\W_]+$")
 
 
 class KeyConfig(BaseModel):
@@ -41,22 +47,25 @@ class KeyCommand(AbstractBaseCommand):
         super().__init__(**kwargs)
         self._config = config if config is not None else KeyConfig()
         self._kb = None  # cached KeyBERT model — only loaded on first local use
+        self._nlp = None  # cached spaCy model for lemmatized dedup
 
     def warmup(self) -> None:
-        """Pre-load the configured extraction model."""
+        """Pre-load the configured extraction and lemmatization models."""
         if self._config.model.lower() == "keybert" and self._kb is None:
             import keybert
             self._kb = keybert.KeyBERT(load_embedder("all-minilm"))
+        self._ensure_nlp()
 
     def operation(self, data: KeyInput, params: KeyParams=None) -> KeyOutput:
         """Extract keywords from the supplied text."""
         p = params or KeyParams()
-        if p.normalize:
-            return KeyOutput(keywords=list({kw.lower() for kw, _ in self._extract(data.content, p)}))
-        return KeyOutput(keywords=[kw for kw, _ in self._extract(data.content, p)])
+        # Over-fetch so noise filtering / stem-dedup can still fill top_n.
+        raw = self._extract(data.content, p, top_n=max(p.top_n * 3, p.top_n + 10))
+        return KeyOutput(keywords=self._postprocess(raw, p)[: p.top_n])
 
-    def _extract(self, content: str, params: KeyParams) -> list:
+    def _extract(self, content: str, params: KeyParams, top_n: Optional[int] = None) -> list:
         """Run extraction using system config for model settings, params for output controls."""
+        n = params.top_n if top_n is None else top_n
         if self._config.model.lower() == "keybert":
             if self._kb is None:
                 import keybert
@@ -65,7 +74,7 @@ class KeyCommand(AbstractBaseCommand):
                 content,
                 keyphrase_ngram_range=(1, params.ngram_max),
                 stop_words=self._config.stop_words or None,
-                top_n=params.top_n,
+                top_n=n,
                 use_mmr=self._config.use_mmr,
             )
         else:
@@ -75,6 +84,47 @@ class KeyCommand(AbstractBaseCommand):
                 n=params.ngram_max,
                 dedupLim=self._config.dedup_lim,
                 dedupFunc=self._config.dedup_func,
-                top=params.top_n,
+                top=n,
             )
             return extractor.extract_keywords(content)
+
+    def _postprocess(self, pairs: List[Tuple[str, float]], params: KeyParams) -> List[str]:
+        """Drop noisy terms and collapse morphological duplicates, preserving extractor order."""
+        seen = set()
+        out: List[str] = []
+        for kw, _ in pairs:
+            cleaned = self._clean_term(kw)
+            if cleaned is None:
+                continue
+            surface = cleaned.lower() if params.normalize else cleaned
+            key = self._stem_key(cleaned)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(surface)
+        return out
+
+    @staticmethod
+    def _clean_term(term: str) -> Optional[str]:
+        """Strip edge punctuation/noise; drop empty, non-alpha, and single-character terms."""
+        term = _EDGE_NOISE.sub("", " ".join(term.split()))
+        if len(term) < 2 or not _HAS_LETTER.search(term):
+            return None
+        return term
+
+    def _stem_key(self, term: str) -> str:
+        """Lemmatize tokens so 'models' / 'modeling' / 'model' collapse to one key."""
+        self._ensure_nlp()
+        return " ".join(t.lemma_.lower() for t in self._nlp(term) if not t.is_space)
+
+    def _ensure_nlp(self) -> None:
+        """Lazy-load the spaCy model used for lemmatized keyword dedup."""
+        if self._nlp is not None:
+            return
+        import spacy
+        model = "en_core_web_sm"
+        try:
+            self._nlp = spacy.load(model)
+        except OSError:
+            spacy.cli.download(model)
+            self._nlp = spacy.load(model)
