@@ -86,6 +86,23 @@ def generate(model: str, messages: list, max_tokens: int) -> str:
     return _THINK_BLOCK.sub("", text).strip()
 
 
+def token_windows(tokenizer, content: str, max_length: int = 512) -> list:
+    """Split content into decoded text windows that each fit a max_length-token model.
+
+    Transformer classifiers (spam, tox) cap at 512 tokens and overflow their position
+    embeddings on longer input. Splitting on token boundaries lets callers score every
+    window and aggregate (e.g. max) instead of crashing or truncating the tail away.
+    """
+    span = max(1, max_length - 2)  # leave room for the [CLS]/[SEP] special tokens
+    ids = tokenizer.encode(content, add_special_tokens=False)
+    if len(ids) <= span:
+        return [content]
+    return [
+        tokenizer.decode(ids[i:i + span], skip_special_tokens=True)
+        for i in range(0, len(ids), span)
+    ]
+
+
 def from_hub(loader, name: str, **kwargs):
     """Call a hub model loader cache-first so flaky networks can't break cached model loads."""
     from transformers.utils import logging as hf_logging

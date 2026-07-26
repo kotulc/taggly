@@ -2,8 +2,10 @@
 
 from pydantic import BaseModel, Field
 
-from taggly.loaders import from_hub
+from taggly.loaders import from_hub, token_windows
 from taggly.models.base import AbstractBaseCommand
+
+_MAX_TOKENS = 512  # spam-detector BERT position-embedding limit
 
 
 class SpamParams(BaseModel):
@@ -40,12 +42,16 @@ class SpamCommand(AbstractBaseCommand):
 
     def operation(self, data: SpamInput, params: SpamParams=None) -> SpamOutput:
         """Compute spam score for the supplied text."""
+        # Long input is scored in <=512-token windows; the highest window score wins so
+        # spam anywhere in the text is flagged without overflowing the model.
         import torch
         if self._tokenizer is None:
             self.warmup()
         p = params or SpamParams()
-        inputs = self._tokenizer(data.content, return_tensors="pt")
-        with torch.no_grad():
-            logits = self._classifier(**inputs).logits
-        score = torch.softmax(logits, dim=1).flatten()[1].item()
+        score = 0.0
+        for window in token_windows(self._tokenizer, data.content, _MAX_TOKENS):
+            inputs = self._tokenizer(window, return_tensors="pt", truncation=True, max_length=_MAX_TOKENS)
+            with torch.no_grad():
+                logits = self._classifier(**inputs).logits
+            score = max(score, torch.softmax(logits, dim=1).flatten()[1].item())
         return SpamOutput(tags=["spam"] if score >= p.threshold else [], score=score)
