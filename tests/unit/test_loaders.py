@@ -450,3 +450,70 @@ class TestFromHub:
 
         assert from_hub(loader, "org/name") == "model"
         loader.assert_called_with("org/name")
+
+
+class TestGenerate:
+    """Tests for the shared greedy generate() helper."""
+
+    def test_generate_strips_think_blocks(self):
+        """generate removes leaked <think>…</think> wrappers from the reply."""
+        from taggly import loaders
+
+        def fake_generator(messages, generation_config=None, **kwargs):
+            return [{"generated_text": list(messages) + [
+                {"role": "assistant", "content": "<think>plan</think>\n{\"ok\": true}"}
+            ]}]
+
+        with patch.object(loaders, "load_generator", return_value=fake_generator):
+            assert loaders.generate("qwen-0.8b", [{"role": "user", "content": "hi"}], 64) == '{"ok": true}'
+
+    def test_generate_disables_thinking(self):
+        """generate asks the tokenizer to leave thinking mode off."""
+        from taggly import loaders
+
+        seen = {}
+
+        def fake_generator(messages, generation_config=None, **kwargs):
+            seen.update(kwargs)
+            return [{"generated_text": list(messages) + [{"role": "assistant", "content": "ok"}]}]
+
+        with patch.object(loaders, "load_generator", return_value=fake_generator):
+            loaders.generate("qwen-0.8b", [{"role": "user", "content": "hi"}], 64)
+
+        assert seen.get("tokenizer_encode_kwargs") == {"enable_thinking": False}
+
+
+class _WordTokenizer:
+    """Minimal tokenizer where each whitespace word is one token."""
+
+    def encode(self, text, add_special_tokens=False):
+        return text.split()
+
+    def decode(self, ids, skip_special_tokens=True):
+        return " ".join(ids)
+
+
+class TestTokenWindows:
+    """Tests for the token_windows chunking helper."""
+
+    def test_short_text_is_single_window(self):
+        from taggly.loaders import token_windows
+
+        assert token_windows(_WordTokenizer(), "a b c", max_length=512) == ["a b c"]
+
+    def test_long_text_splits_into_bounded_windows(self):
+        from taggly.loaders import token_windows
+
+        text = " ".join(f"w{i}" for i in range(20))
+        windows = token_windows(_WordTokenizer(), text, max_length=6)  # span = 4 tokens
+
+        assert len(windows) == 5
+        assert all(len(w.split()) <= 4 for w in windows)
+        assert " ".join(windows) == text  # lossless reconstruction
+
+    def test_boundary_length_stays_single_window(self):
+        from taggly.loaders import token_windows
+
+        # span = max_length - 2; exactly span tokens must not split.
+        text = " ".join(f"w{i}" for i in range(8))  # 8 tokens
+        assert token_windows(_WordTokenizer(), text, max_length=10) == [text]

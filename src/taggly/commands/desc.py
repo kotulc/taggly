@@ -1,5 +1,7 @@
 """desc command: Generate a natural-language description of the supplied text."""
 
+import re
+
 from pydantic import BaseModel, Field
 
 from taggly.loaders import generate, load_generator
@@ -7,7 +9,13 @@ from taggly.models.base import AbstractBaseCommand
 
 # Asking what the text is about (rather than to describe it) keeps small
 # models from answering with a near-restatement of the input.
-PROMPT = "What is the following text about? Answer in as few words as possible.\n\nText: {}"
+PROMPT = (
+    "What is the following text about? Answer in as few words as possible. "
+    "Plain text only — no markdown.\n\nText: {}"
+)
+
+# Small models sometimes wrap phrases in **bold** / __bold__ despite the prompt.
+_MD_BOLD = re.compile(r"\*\*(.+?)\*\*|__(.+?)__")
 
 
 class DescConfig(BaseModel):
@@ -42,4 +50,10 @@ class DescCommand(AbstractBaseCommand):
         """Generate a concise description of the supplied text."""
         messages = [{"role": "user", "content": PROMPT.format(data.content)}]
         text = generate(self._config.model, messages, self._config.max_tokens)
-        return DescOutput(description=text.strip())
+        return DescOutput(description=self._clean(text))
+
+    @staticmethod
+    def _clean(text: str) -> str:
+        """Strip markdown bold markers small models occasionally emit."""
+        text = _MD_BOLD.sub(lambda m: m.group(1) or m.group(2), text.strip())
+        return text.replace("**", "").replace("__", "").strip()

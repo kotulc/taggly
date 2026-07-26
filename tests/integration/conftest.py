@@ -51,10 +51,36 @@ class _FakeClassifier:
         return SimpleNamespace(logits=torch.tensor([[0.2, 0.8]]))
 
 
+class _FakeTokenizer:
+    """Stub tokenizer — supports call/encode/decode so token-window chunking runs offline."""
+    model_max_length = 512
+
+    def __call__(self, text, **kwargs):
+        return {}
+
+    def encode(self, text, add_special_tokens=False):
+        return list(range(len(text.split())))
+
+    def decode(self, ids, skip_special_tokens=True):
+        return " ".join("tok" for _ in ids)
+
+
+class _FakeDoc:
+    """Stub spaCy Doc — iterable over lemmatized tokens (key) with fixed .ents (ent)."""
+    def __init__(self, text):
+        self._tokens = [
+            SimpleNamespace(lemma_=word, is_space=False) for word in text.split()
+        ] or [SimpleNamespace(lemma_="stub", is_space=False)]
+        self.ents = [SimpleNamespace(text="stub")]
+
+    def __iter__(self):
+        return iter(self._tokens)
+
+
 class _FakeSpacy:
-    """Stub spaCy pipeline — fixed entities without downloading a language model."""
+    """Stub spaCy pipeline — returns a Doc-like object without downloading a model."""
     def __call__(self, text):
-        return SimpleNamespace(ents=[SimpleNamespace(text="stub")])
+        return _FakeDoc(text)
 
 
 _embedder_cache: dict = {}
@@ -96,6 +122,6 @@ def stub_loaders(monkeypatch):
     import spacy
     import transformers
     monkeypatch.setattr(spacy, "load", lambda name: _FakeSpacy())
-    monkeypatch.setattr(transformers, "pipeline", lambda *a, **kw: lambda text: [{"label": "toxic", "score": 0.8}])
-    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **kw: lambda text, return_tensors=None: {})
+    monkeypatch.setattr(transformers, "pipeline", lambda *a, **kw: lambda text, **kwargs: [{"label": "toxic", "score": 0.8}])
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **kw: _FakeTokenizer())
     monkeypatch.setattr(transformers.AutoModelForSequenceClassification, "from_pretrained", lambda *a, **kw: _FakeClassifier())

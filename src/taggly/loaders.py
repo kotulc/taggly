@@ -1,6 +1,10 @@
 """Cached loaders for the embedding and generative models shared across commands."""
 
+import re
 from functools import lru_cache
+
+# Qwen-style reasoning wrappers occasionally leak into the assistant reply.
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 # Short names mapped to full sentence-transformers identifiers for similarity commands
 EMBED_MODELS = {
@@ -67,13 +71,36 @@ def generate(model: str, messages: list, max_tokens: int) -> str:
     """Run one greedy chat generation and return the assistant reply text.
 
     Greedy decoding (do_sample=False) keeps small models on-task; their default
-    sampling settings tend to echo the prompt or ramble.
+    sampling settings tend to echo the prompt or ramble. Thinking mode is disabled
+    so reasoning models don't burn the token budget before producing the answer.
     """
     from transformers import GenerationConfig
     config = GenerationConfig(max_new_tokens=max_tokens, do_sample=False)
-    output = load_generator(model)(messages, generation_config=config)
+    output = load_generator(model)(
+        messages,
+        generation_config=config,
+        tokenizer_encode_kwargs={"enable_thinking": False},
+    )
     result = output[0]["generated_text"]
-    return result[-1]["content"] if isinstance(result, list) else result
+    text = result[-1]["content"] if isinstance(result, list) else result
+    return _THINK_BLOCK.sub("", text).strip()
+
+
+def token_windows(tokenizer, content: str, max_length: int = 512) -> list:
+    """Split content into decoded text windows that each fit a max_length-token model.
+
+    Transformer classifiers (spam, tox) cap at 512 tokens and overflow their position
+    embeddings on longer input. Splitting on token boundaries lets callers score every
+    window and aggregate (e.g. max) instead of crashing or truncating the tail away.
+    """
+    span = max(1, max_length - 2)  # leave room for the [CLS]/[SEP] special tokens
+    ids = tokenizer.encode(content, add_special_tokens=False)
+    if len(ids) <= span:
+        return [content]
+    return [
+        tokenizer.decode(ids[i:i + span], skip_special_tokens=True)
+        for i in range(0, len(ids), span)
+    ]
 
 
 def from_hub(loader, name: str, **kwargs):
